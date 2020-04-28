@@ -3,7 +3,7 @@
 
 ## Milestones
 
-- [x] Refined VM based on work by (Mr Briones)[https://github.com/cwbriones]
+- [x] Refined VM based on work by [Mr Briones](https://github.com/cwbriones)
 - [x] Tracing garbage collector
 - [ ] High-level IR
 - [ ] Optimizer
