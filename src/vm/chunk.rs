@@ -45,23 +45,7 @@ impl Chunk {
     }
 
     pub fn write_u64(&mut self, val: u64) {
-        let b1 = (val & 0xff) as u8;
-        let b2 = ((val >> 8) & 0xff) as u8;
-        let b3 = ((val >> 16) & 0xff) as u8;
-        let b4 = ((val >> 24) & 0xff) as u8;
-        let b5 = ((val >> 32) & 0xff) as u8;
-        let b6 = ((val >> 40) & 0xff) as u8;
-        let b7 = ((val >> 48) & 0xff) as u8;
-        let b8 = ((val >> 56) & 0xff) as u8;
-
-        self.write_byte(b1);
-        self.write_byte(b2);
-        self.write_byte(b3);
-        self.write_byte(b4);
-        self.write_byte(b5);
-        self.write_byte(b6);
-        self.write_byte(b7);
-        self.write_byte(b8);
+        (0..8).for_each(|i| self.write_byte(((val >> i * 8) & 0xFF) as u8))
     }
 
     #[inline]
