@@ -15,8 +15,8 @@ pub enum Literal {
 // When depth is None, we're dealing with a global.
 pub struct Binding {
     name: String,
-    depth: Option<LocalId>,
-    function_depth: LocalId,
+    depth: Option<usize>,
+    function_depth: usize,
 }
 
 impl Binding {
@@ -36,7 +36,7 @@ impl Binding {
         }
     }
 
-    pub fn resolve(&mut self, depth: LocalId, function_depth: LocalId) {
+    pub fn resolve(&mut self, depth: usize, function_depth: usize) {
         self.depth = Some(depth);
         self.function_depth = function_depth
     }
@@ -48,7 +48,7 @@ impl Binding {
             .unwrap_or(false)
     }
 
-    pub fn upvalue_depth(&self) -> Option<LocalId> {
+    pub fn upvalue_depth(&self) -> Option<usize> {
         self.depth.and_then(|d|
             if self.is_upvalue() {
                 Some(d - self.function_depth)
@@ -97,13 +97,23 @@ pub struct Node<T> {
     type_info: TypeInfo,
 }
 
+impl<T> Node<T> {
+    pub fn new(inner: T, type_info: TypeInfo) -> Self {
+        Node {
+            inner: Box::new(inner),
+            type_info
+        }
+    }
+}
+
 pub type AtomNode = Node<Atom>;
 
 pub enum Atom {
     Data(DataId),
 
     Literal(Literal),
-    Binding(Binding, AtomNode), // @zesterer: like `with` 
+    Bind(LocalId, Binding, AtomNode), // @zesterer: like `with` 
+    Global(Binding, AtomNode),
     Mutate(AtomNode, AtomNode),
     Binary(AtomNode, BinaryOp, AtomNode),
     Call(Call),
@@ -117,7 +127,33 @@ pub enum Atom {
     Break,
 }
 
+impl Atom {
+    pub fn node(self, type_info: TypeInfo) -> AtomNode {
+        Node::new(self, type_info)
+    }
+}
+
 pub struct Program {
     data: HashMap<DataId, AtomNode>,
-    entry: DataId
+    entry: Option<DataId>
+}
+
+impl Program {
+    pub fn empty() -> Self {
+        Program {
+            data: HashMap::new(),
+            entry: None,
+        }
+    }
+
+    pub fn with_entry(entry: DataId) -> Self {
+        Program {
+            data: HashMap::new(),
+            entry: Some(entry)
+        }
+    }
+
+    pub fn insert(&mut self, id: DataId, atom: AtomNode) {
+        self.data.insert(id, atom);
+    }
 }
