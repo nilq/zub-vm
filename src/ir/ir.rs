@@ -1,13 +1,16 @@
 use super::TypeInfo;
 
-use std::collections::HashMap;
-use std::rc::Rc;
-use std::cell::RefCell;
+use std::{
+    collections::HashMap,
+    rc::Rc,
+    cell::RefCell,
+    fmt,
+};
 
 pub type LocalId = usize;
 pub type DataId  = usize;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Literal {
     Number(f64),
     String(String),
@@ -82,7 +85,7 @@ impl Binding {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -98,26 +101,26 @@ pub enum BinaryOp {
     Or,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum UnaryOp {
     Neg,
     Not,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IrFunctionBody {
     pub params: Vec<Binding>,
     pub method: bool,
     pub inner: Vec<ExprNode>, // the actual function body
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IrFunction {
     pub var: Binding,
     pub body: Rc<RefCell<IrFunctionBody>>, // A Literal/Constant
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Call {
     pub callee: Node<Expr>,
     pub args: Vec<Node<Expr>>,
@@ -146,12 +149,18 @@ impl<T> Node<T> {
     }
 }
 
+impl<T: fmt::Debug> fmt::Debug for Node<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:#?}", self.inner)
+    }
+}
+
 pub type ExprNode = Node<Expr>;
 
 // NOTE: LocalId removed for now, as it wasn't used in the compiler
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Expr {
     Data(DataId),
 
@@ -181,6 +190,7 @@ impl Expr {
     }
 }
 
+#[derive(Debug)]
 pub struct Program {
     data: HashMap<DataId, ExprNode>,
     entry: Option<DataId>

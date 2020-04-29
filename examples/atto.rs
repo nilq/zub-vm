@@ -10,37 +10,35 @@ fn parse_expr(
         [] => None,
         [ident, ..] => {
             *slice = &slice[1..];
-            if let Some((args, binding)) = get_binding(ident) {
+            if let Some(op) = match *ident {
+                "+" => Some(BinaryOp::Add),
+                "-" => Some(BinaryOp::Sub),
+                "*" => Some(BinaryOp::Mul),
+                "/" => Some(BinaryOp::Div),
+                //"%" => Some(BinaryOp::Rem),
+                "=" => Some(BinaryOp::Equal),
+                ">" => Some(BinaryOp::Gt),
+                "<" => Some(BinaryOp::Lt),
+                ">=" => Some(BinaryOp::GtEqual),
+                "<=" => Some(BinaryOp::LtEqual),
+                "&" => Some(BinaryOp::And),
+                "|" => Some(BinaryOp::Or),
+                _ => None,
+            } {
+                let a = parse_expr(builder, slice, get_binding)?;
+                let b = parse_expr(builder, slice, get_binding)?;
+                Some(builder.binary(a, op, b))
+            } else if let Ok(n) = ident.parse() {
+                Some(builder.number(n))
+            } else if let Some((args, binding)) = get_binding(ident) {
                 let args = (0..args).map(|_| parse_expr(builder, slice, get_binding)).collect::<Option<_>>()?;
                 Some(builder.call(
                     builder.var(binding),
                     args,
                     None,
                 ))
-            } else if let Ok(n) = ident.parse() {
-                Some(builder.number(n))
             } else {
-                if let Some(op) = match *ident {
-                    "+" => Some(BinaryOp::Add),
-                    "-" => Some(BinaryOp::Sub),
-                    "*" => Some(BinaryOp::Mul),
-                    "/" => Some(BinaryOp::Div),
-                    //"%" => Some(BinaryOp::Rem),
-                    "=" => Some(BinaryOp::Equal),
-                    ">" => Some(BinaryOp::Gt),
-                    "<" => Some(BinaryOp::Lt),
-                    ">=" => Some(BinaryOp::GtEqual),
-                    "<=" => Some(BinaryOp::LtEqual),
-                    "&" => Some(BinaryOp::And),
-                    "|" => Some(BinaryOp::Or),
-                    _ => None,
-                } {
-                    let a = parse_expr(builder, slice, get_binding)?;
-                    let b = parse_expr(builder, slice, get_binding)?;
-                    Some(builder.binary(a, op, b))
-                } else {
-                    None
-                }
+                None
             }
         },
     }
@@ -50,7 +48,7 @@ fn parse_fn<'a>(
     builder: &mut IrBuilder,
     slice: &mut &'a [&'a str],
     get_binding: &impl Fn(&str) -> Option<(usize, Binding)>,
-) -> Option<(&'a str, usize, Node<Expr>)> {
+) -> Option<(&'a str, usize, IrFunction)> {
     match *slice {
         [] => None,
         ["fn", name, ..] => {
@@ -64,20 +62,22 @@ fn parse_fn<'a>(
                     *slice = &slice[1..];
                 });
             *slice = &slice[1..];
-            let body = parse_expr(builder, slice, &|ident| if ident == *name {
+            let mut builder = IrBuilder::new();
+            let body = parse_expr(&mut builder, slice, &|ident| if ident == *name {
                 Some((params.len(), Binding::define_local(ident)))
             } else if let Some(binding) = params.get(&ident) {
                 Some((0, binding.clone()))
             } else {
                 get_binding(ident)
             })?;
+            builder.ret(Some(body));
             let f = IrFunctionBuilder::new_global(*name)
                 .params(params.values().cloned().collect())
-                .body(vec![body])
+                .body(builder.build())
                 .build();
-            Some((*name, 0, builder.function(f)))
+            Some((*name, params.len(), f))
         },
-        _ => panic!("Not a function"),
+        _ => panic!("Not a function: {:?}", slice),
     }
 }
 
@@ -87,19 +87,20 @@ const CODE: &str = r#"
     fn sub x y is - x y
 
     fn main is
-        + 5 - 7 4
+        add 5 sub 7 4
 "#;
 
 fn main() {
     let tokens = CODE.split_whitespace().collect::<Vec<_>>();
 
     let mut builder = IrBuilder::new();
-    let mut fns = HashMap::new();
+    let mut fns = HashMap::<_, (usize, _)>::new();
     let mut token_slice = &tokens[..];
-    while let Some((name, args, f)) = parse_fn(&mut builder, &mut token_slice, &|name| fns.get(name).cloned()) {
-        println!("Defined {}", name);
-        let binding = builder.bind_global(name, f);
-        fns.insert(name, (args, binding));
+    while let Some((name, args, f)) = parse_fn(&mut builder, &mut token_slice, &|name| {
+        fns.get(name).cloned()
+    }) {
+        builder.function(f);
+        fns.insert(name, (args, Binding::define_global(name)));
     }
 
     let main_var = builder.var(Binding::define_global("main"));
@@ -107,7 +108,10 @@ fn main() {
     builder.bind_global("main2", main_call);
 
     let mut vm = VM::new();
-    vm.exec(&builder.build());
+
+    let ir = builder.build();
+    //println!("{:#?}", ir);
+    vm.exec(&ir);
 
     println!("{:?}", vm.globals);
 }
