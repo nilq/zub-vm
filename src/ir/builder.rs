@@ -107,7 +107,7 @@ impl IrBuilder {
     }
 
     // Binds a clean local binding, should be resolved after
-    pub fn bind_local(&mut self, id: LocalId, name: &str, rhs: AtomNode, depth: usize, function_depth: usize) {
+    pub fn bind_local(&mut self, name: &str, rhs: AtomNode, depth: usize, function_depth: usize) {
         let mut binding = Binding::local(name);
 
         binding.resolve(depth, function_depth);
