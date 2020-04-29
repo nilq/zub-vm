@@ -6,7 +6,7 @@ use std::cell::RefCell;
 pub struct IrFunctionBuilder {
     pub var: Binding,
     pub params: Vec<Binding>,
-    pub body: Vec<Expr>,
+    pub body: Vec<ExprNode>,
     pub method: bool, // false by default
 }
 
@@ -32,7 +32,7 @@ impl IrFunctionBuilder {
         }
     }
 
-    pub fn from(var: Binding, params: Vec<Binding>, body: Vec<Expr>) -> Self {
+    pub fn from(var: Binding, params: Vec<Binding>, body: Vec<ExprNode>) -> Self {
         IrFunctionBuilder {
             var,
             params,
@@ -46,7 +46,7 @@ impl IrFunctionBuilder {
         self
     }
 
-    pub fn body(mut self, body: Vec<Expr>) -> Self {
+    pub fn body(mut self, body: Vec<ExprNode>) -> Self {
         self.body = body;
         self
     }
@@ -71,7 +71,7 @@ impl IrFunctionBuilder {
 
 pub struct IrBuilder {
     info: Program,
-    program: Vec<Expr>,
+    program: Vec<ExprNode>,
 }
 
 impl IrBuilder {
@@ -90,8 +90,14 @@ impl IrBuilder {
     }
 
     pub fn ret(&mut self, value: Option<ExprNode>) {
+        let info = if let Some(ref value) = value {
+            value.type_info().clone()
+        } else {
+            TypeInfo::none(true)
+        };
+
         self.emit(
-            Expr::Return(value)
+            Expr::Return(value).node(info)
         )
     }
 
@@ -114,17 +120,30 @@ impl IrBuilder {
         Expr::Var(binding)
     }
 
-    pub fn mutate(&mut self, lhs: ExprNode, rhs: ExprNode) {
-        self.emit(Expr::Mutate(lhs, rhs))
+    pub fn mutate(&mut self, lhs: ExprNode, rhs: ExprNode) -> ExprNode {
+        let mutate = Expr::Mutate(lhs, rhs);
+
+        self.emit(mutate.clone().node(TypeInfo::none(true)));
+
+        mutate.node(TypeInfo::none(true))
     }
 
     // Binding to be resolved manually
-    pub fn bind(&mut self, binding: Binding, rhs: ExprNode) {
-        self.emit( Expr::Bind(binding, rhs))
+    pub fn bind(&mut self, binding: Binding, rhs: ExprNode) -> ExprNode {
+        let bind = Expr::Bind(binding, rhs);
+
+        self.emit(bind.clone().node(TypeInfo::none(true)));
+
+        bind.node(TypeInfo::none(true))
     }
 
-    pub fn function(&mut self, func: IrFunction) {
-        self.emit(Expr::Function(func))
+    pub fn function(&mut self, func: IrFunction) -> ExprNode {
+        let func = Expr::Function(func);
+
+        self.emit(func.clone().node(TypeInfo::none(true)));
+
+        // TODO: do things with type info
+        func.node(TypeInfo::none(true))
     }
 
     // Binds a clean local binding, should be resolved after
@@ -139,7 +158,7 @@ impl IrBuilder {
     pub fn bind_global(&mut self, name: &str, rhs: ExprNode) -> Binding {
         let binding = Binding::global(name);
 
-        self.emit(Expr::BindGlobal(binding.clone(), rhs));
+        self.emit(Expr::BindGlobal(binding.clone(), rhs).node(TypeInfo::none(true)));
 
         binding
     }
@@ -187,11 +206,11 @@ impl IrBuilder {
         Expr::Literal(lit).node(info)
     }
 
-    pub fn build(self) -> Vec<Expr> {
+    pub fn build(self) -> Vec<ExprNode> {
         self.program
     }
 
-    pub fn emit(&mut self, atom: Expr) {
+    pub fn emit(&mut self, atom: ExprNode) {
         self.program.push(atom)
     }
 }

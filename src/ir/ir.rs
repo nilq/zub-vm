@@ -108,7 +108,7 @@ pub enum UnaryOp {
 pub struct IrFunctionBody {
     pub params: Vec<Binding>,
     pub method: bool,
-    pub inner: Vec<Expr>, // the actual function body
+    pub inner: Vec<ExprNode>, // the actual function body
 }
 
 #[derive(Clone)]
@@ -139,6 +139,10 @@ impl<T> Node<T> {
 
     pub fn inner(&self) -> &T {
         &self.inner
+    }
+
+    pub fn type_info(&self) -> &TypeInfo {
+        &self.type_info
     }
 }
 

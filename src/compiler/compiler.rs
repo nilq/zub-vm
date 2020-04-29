@@ -168,7 +168,7 @@ impl<'g> Compiler<'g> {
         }
     }
 
-    pub fn compile(mut self, exprs: &[Expr]) -> Function {
+    pub fn compile(mut self, exprs: &[ExprNode]) -> Function {
         self.start_function(false, "<zub>", 0, 0);
 
         for expr in exprs.iter() {
@@ -178,13 +178,13 @@ impl<'g> Compiler<'g> {
         self.end_function()
     }
 
-    fn compile_expr(&mut self, expr: &Expr) {
+    fn compile_expr(&mut self, expr: &ExprNode) {
         use self::Expr::*;
 
-        match expr {
+        match expr.inner() {
             Literal(ref lit) => self.emit_constant(lit),
             Unary(ref op, ref node) => {
-                self.compile_expr(node.inner());
+                self.compile_expr(node);
 
                 use self::UnaryOp::*;
 
@@ -198,7 +198,7 @@ impl<'g> Compiler<'g> {
             Mutate(ref lhs, ref rhs) => {
                 // Currently just handling Var
                 if let Var(ref var) = lhs.inner() {
-                    self.compile_expr(rhs.inner());
+                    self.compile_expr(rhs);
 
                     if var.is_upvalue() {
                         let idx = self.resolve_upvalue(var.name());
@@ -235,10 +235,10 @@ impl<'g> Compiler<'g> {
                     panic!("will fix this limitation asap")
                 }
 
-                self.compile_expr(call.callee.inner());
+                self.compile_expr(&call.callee);
 
                 for arg in call.args.iter() {
-                    self.compile_expr(arg.inner())
+                    self.compile_expr(arg)
                 }
 
                 self.emit(Op::Call(arity as u8))
@@ -249,18 +249,18 @@ impl<'g> Compiler<'g> {
                 
                 match op {
                     And => {
-                        self.compile_expr(lhs.inner());
+                        self.compile_expr(lhs);
 
                         let short_circuit_jmp = self.emit_jze();
 
                         self.emit(Op::Pop);
-                        self.compile_expr(rhs.inner());
+                        self.compile_expr(rhs);
 
                         self.patch_jmp(short_circuit_jmp);
                     },
 
                     Or => {
-                        self.compile_expr(lhs.inner());
+                        self.compile_expr(lhs);
 
                         let else_jmp = self.emit_jze();
                         let end_jmp = self.emit_jmp();
@@ -268,7 +268,7 @@ impl<'g> Compiler<'g> {
                         self.patch_jmp(else_jmp);
                         self.emit(Op::Pop);
 
-                        self.compile_expr(rhs.inner());
+                        self.compile_expr(rhs);
                         
                         self.patch_jmp(end_jmp)
                     },
@@ -276,8 +276,8 @@ impl<'g> Compiler<'g> {
                     _ => {
                         // This looks kinda funny, but it's an ok way of matching I guess
 
-                        self.compile_expr(lhs.inner()); // will handle type in the future :)
-                        self.compile_expr(rhs.inner());
+                        self.compile_expr(lhs); // will handle type in the future :)
+                        self.compile_expr(rhs);
 
                         match op {
                             Add => self.emit(Op::Add),
@@ -311,12 +311,12 @@ impl<'g> Compiler<'g> {
             },
 
             Bind(ref var, ref init) => {
-                self.compile_expr(init.inner());
+                self.compile_expr(init);
                 self.var_define(var, None)
             },
 
             BindGlobal(ref var, ref init) => {
-                self.compile_expr(init.inner());
+                self.compile_expr(init);
                 self.var_define(var, None)
             },
 
@@ -473,8 +473,8 @@ impl<'g> Compiler<'g> {
         if initializer {
             self.emit(Op::GetLocal);
             self.emit_byte(0)
-        } else if let Some(expr) = ret {
-            self.compile_expr(expr.inner())
+        } else if let Some(ref expr) = ret {
+            self.compile_expr(expr)
         } else {
             self.emit(Op::Nil)
         }
