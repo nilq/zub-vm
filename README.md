@@ -5,7 +5,7 @@
 
 - [x] Refined VM based on work by [Mr Briones](https://github.com/cwbriones)
 - [x] Tracing garbage collector
-- [ ] High-level IR
+- [x] High-level IR
+- [x] Compilation of IR
 - [ ] Optimizer
-- [ ] Compilation of IR
 - [ ] Profiler and disassembler
