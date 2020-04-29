@@ -97,6 +97,10 @@ impl IrBuilder {
         )
     }
 
+    pub fn var(&self, binding: Binding) -> Atom {
+        Atom::Var(binding)
+    }
+
     pub fn mutate(&mut self, lhs: AtomNode, rhs: AtomNode) {
         self.emit(Atom::Mutate(lhs, rhs))
     }
@@ -121,8 +125,8 @@ impl IrBuilder {
         self.emit(Atom::BindGlobal(binding, rhs))
     }
 
-    pub fn binary(lhs: AtomNode, op: BinaryOp, rhs: AtomNode) -> Atom {
-        Atom::Binary(lhs, op, rhs)
+    pub fn binary(&self, lhs: AtomNode, op: BinaryOp, rhs: AtomNode) -> AtomNode {
+        Atom::Binary(lhs, op, rhs).node(TypeInfo::none(true))
     }
 
     pub fn unary(op: UnaryOp, rhs: AtomNode) -> Atom {
