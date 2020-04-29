@@ -128,16 +128,20 @@ impl IrBuilder {
     }
 
     // Binds a clean local binding, should be resolved after
-    pub fn bind_local(&mut self, name: &str, rhs: ExprNode, depth: usize, function_depth: usize) {
+    pub fn bind_local(&mut self, name: &str, rhs: ExprNode, depth: usize, function_depth: usize) -> Binding {
         let binding = Binding::local(name, depth, function_depth);
 
-        self.bind(binding, rhs)
+        self.bind(binding.clone(), rhs);
+
+        binding
     }
 
-    pub fn bind_global(&mut self, name: &str, rhs: ExprNode, depth: usize) {
+    pub fn bind_global(&mut self, name: &str, rhs: ExprNode, depth: usize) -> Binding {
         let binding = Binding::global(name, depth);
 
-        self.emit(Expr::BindGlobal(binding, rhs))
+        self.emit(Expr::BindGlobal(binding.clone(), rhs));
+
+        binding
     }
 
     pub fn binary(&self, lhs: ExprNode, op: BinaryOp, rhs: ExprNode) -> ExprNode {
