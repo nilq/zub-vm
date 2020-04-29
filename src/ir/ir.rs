@@ -1,10 +1,13 @@
 use super::TypeInfo;
 
 use std::collections::HashMap;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub type LocalId = usize;
 pub type DataId  = usize;
 
+#[derive(Clone)]
 pub enum Literal {
     Number(f64),
     String(String),
@@ -13,9 +16,10 @@ pub enum Literal {
 }
 
 // When depth is None, we're dealing with a global.
+#[derive(Clone)]
 pub struct Binding {
     name: String,
-    depth: Option<usize>,
+    pub depth: Option<usize>,
     function_depth: usize,
 }
 
@@ -62,36 +66,48 @@ impl Binding {
     }
 }
 
+#[derive(Clone)]
 pub enum BinaryOp {
     Add,
     Sub,
     Mul,
     Div,
-    Eq,
-    NEq,
-    GtEq,
-    LtEq,
+    Equal,
+    NEqual,
+    GtEqual,
+    LtEqual,
     Gt,
     Lt,
     And,
     Or,
 }
 
+#[derive(Clone)]
 pub enum UnaryOp {
     Neg,
     Not,
 }
 
-pub struct Function {
-    arg_count: usize,
-    params: Vec<Binding>,
+#[derive(Clone)]
+pub struct IrFunctionBody {
+    pub params: Vec<Binding>,
+    pub method: bool,
+    pub inner: Vec<Atom>, // the actual function body
 }
 
+#[derive(Clone)]
+pub struct IrFunction {
+    pub var: Binding,
+    pub body: Rc<RefCell<IrFunctionBody>>, // A Literal/Constant
+}
+
+#[derive(Clone)]
 pub struct Call {
     pub callee: Node<Atom>,
     pub args: Vec<Node<Atom>>,
 }
 
+#[derive(Clone)]
 pub struct Node<T> {
     inner: Box<T>,
     type_info: TypeInfo,
@@ -104,20 +120,32 @@ impl<T> Node<T> {
             type_info
         }
     }
+
+    pub fn inner(&self) -> &T {
+        &self.inner
+    }
 }
 
 pub type AtomNode = Node<Atom>;
 
+// NOTE: LocalId removed for now, as it wasn't used in the compiler
+
+
+#[derive(Clone)]
 pub enum Atom {
     Data(DataId),
 
     Literal(Literal),
-    Bind(LocalId, Binding, AtomNode), // @zesterer: like `with` 
-    Global(Binding, AtomNode),
+
+    Bind(Binding, AtomNode), // @zesterer: like `with` 
+    BindGlobal(Binding, AtomNode),
+
+    Var(Binding), // access binding
+
     Mutate(AtomNode, AtomNode),
     Binary(AtomNode, BinaryOp, AtomNode),
     Call(Call),
-    Function(Function),
+    Function(IrFunction),
     Unary(UnaryOp, AtomNode),
     Return(Option<AtomNode>),
 

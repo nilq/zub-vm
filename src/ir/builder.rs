@@ -1,5 +1,60 @@
 use super::*;
 
+use std::rc::Rc;
+use std::cell::RefCell;
+
+pub struct IrFunctionBuilder {
+    pub var: Binding,
+    pub params: Vec<Binding>,
+    pub body: Vec<Atom>,
+    pub method: bool, // false by default
+}
+
+// This will very likely change in the near future
+// ... a small experimental thing
+impl IrFunctionBuilder {
+    // the build-a-function way
+    pub fn new_local(name: &str) -> Self {
+        IrFunctionBuilder {
+            var: Binding::local(name),
+            params: Vec::new(),
+            body: Vec::new(),
+            method: false
+        }
+    }
+
+    pub fn from(var: Binding, params: Vec<Binding>, body: Vec<Atom>) -> Self {
+        IrFunctionBuilder {
+            var,
+            params,
+            body,
+            method: false
+        }
+    }
+
+    pub fn params(mut self, params: Vec<Binding>) -> Self {
+        self.params = params;
+        self
+    }
+
+    pub fn body(mut self, body: Vec<Atom>) -> Self {
+        self.body = body;
+        self
+    }
+
+    pub fn build(self) -> IrFunction {
+        let func_body = IrFunctionBody {
+            params: self.params,
+            method: self.method,
+            inner:  self.body,
+        };
+
+        IrFunction {
+            var: self.var,
+            body: Rc::new(RefCell::new(func_body))
+        }
+    }
+}
 
 pub struct IrBuilder {
     info: Program,
@@ -47,8 +102,8 @@ impl IrBuilder {
     }
 
     // Binding to be resolved manually
-    pub fn bind(&mut self, id: LocalId, binding: Binding, rhs: AtomNode) {
-        self.emit( Atom::Bind(id, binding, rhs))
+    pub fn bind(&mut self, binding: Binding, rhs: AtomNode) {
+        self.emit( Atom::Bind(binding, rhs))
     }
 
     // Binds a clean local binding, should be resolved after
@@ -57,13 +112,13 @@ impl IrBuilder {
 
         binding.resolve(depth, function_depth);
 
-        self.bind(id, binding, rhs)
+        self.bind(binding, rhs)
     }
 
     pub fn bind_global(&mut self, name: &str, rhs: AtomNode) {
         let binding = Binding::global(name);
 
-        self.emit(Atom::Global(binding, rhs))
+        self.emit(Atom::BindGlobal(binding, rhs))
     }
 
     pub fn binary(lhs: AtomNode, op: BinaryOp, rhs: AtomNode) -> Atom {

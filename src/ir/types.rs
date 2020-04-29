@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub enum Type {
     Float,
     Int,
@@ -6,6 +7,7 @@ pub enum Type {
     Nil
 }
 
+#[derive(Clone)]
 pub struct TypeInfo {
     mutable: bool,
     kind: Option<Type>
