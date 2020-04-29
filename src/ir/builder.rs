@@ -164,6 +164,10 @@ impl IrBuilder {
         Atom::Literal(lit).node(info)
     }
 
+    pub fn build(self) -> Vec<Atom> {
+        self.program
+    }
+
     fn emit(&mut self, atom: Atom) {
         self.program.push(atom)
     }
