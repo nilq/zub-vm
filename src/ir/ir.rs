@@ -92,7 +92,7 @@ pub enum UnaryOp {
 pub struct IrFunctionBody {
     pub params: Vec<Binding>,
     pub method: bool,
-    pub inner: Vec<Atom>, // the actual function body
+    pub inner: Vec<Expr>, // the actual function body
 }
 
 #[derive(Clone)]
@@ -103,8 +103,8 @@ pub struct IrFunction {
 
 #[derive(Clone)]
 pub struct Call {
-    pub callee: Node<Atom>,
-    pub args: Vec<Node<Atom>>,
+    pub callee: Node<Expr>,
+    pub args: Vec<Node<Expr>>,
 }
 
 #[derive(Clone)]
@@ -126,43 +126,43 @@ impl<T> Node<T> {
     }
 }
 
-pub type AtomNode = Node<Atom>;
+pub type ExprNode = Node<Expr>;
 
 // NOTE: LocalId removed for now, as it wasn't used in the compiler
 
 
 #[derive(Clone)]
-pub enum Atom {
+pub enum Expr {
     Data(DataId),
 
     Literal(Literal),
 
-    Bind(Binding, AtomNode), // @zesterer: like `with` 
-    BindGlobal(Binding, AtomNode),
+    Bind(Binding, ExprNode), // @zesterer: like `with` 
+    BindGlobal(Binding, ExprNode),
 
     Var(Binding), // access binding
 
-    Mutate(AtomNode, AtomNode),
-    Binary(AtomNode, BinaryOp, AtomNode),
+    Mutate(ExprNode, ExprNode),
+    Binary(ExprNode, BinaryOp, ExprNode),
     Call(Call),
     Function(IrFunction),
-    Unary(UnaryOp, AtomNode),
-    Return(Option<AtomNode>),
+    Unary(UnaryOp, ExprNode),
+    Return(Option<ExprNode>),
 
-    If(AtomNode, AtomNode, Option<AtomNode>),
-    While(AtomNode, AtomNode),
+    If(ExprNode, ExprNode, Option<ExprNode>),
+    While(ExprNode, ExprNode),
 
     Break,
 }
 
-impl Atom {
-    pub fn node(self, type_info: TypeInfo) -> AtomNode {
+impl Expr {
+    pub fn node(self, type_info: TypeInfo) -> ExprNode {
         Node::new(self, type_info)
     }
 }
 
 pub struct Program {
-    data: HashMap<DataId, AtomNode>,
+    data: HashMap<DataId, ExprNode>,
     entry: Option<DataId>
 }
 
@@ -181,7 +181,7 @@ impl Program {
         }
     }
 
-    pub fn insert(&mut self, id: DataId, atom: AtomNode) {
+    pub fn insert(&mut self, id: DataId, atom: ExprNode) {
         self.data.insert(id, atom);
     }
 }

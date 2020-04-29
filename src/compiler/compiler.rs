@@ -168,23 +168,23 @@ impl<'g> Compiler<'g> {
         }
     }
 
-    pub fn compile(mut self, atoms: &[Atom]) -> Function {
+    pub fn compile(mut self, exprs: &[Expr]) -> Function {
         self.start_function(false, "<zub>", 0, 0);
 
-        for atom in atoms.iter() {
-            self.compile_atom(atom)
+        for expr in exprs.iter() {
+            self.compile_expr(expr)
         }
 
         self.end_function()
     }
 
-    fn compile_atom(&mut self, atom: &Atom) {
-        use self::Atom::*;
+    fn compile_expr(&mut self, expr: &Expr) {
+        use self::Expr::*;
 
-        match atom {
+        match expr {
             Literal(ref lit) => self.emit_constant(lit),
             Unary(ref op, ref node) => {
-                self.compile_atom(node.inner());
+                self.compile_expr(node.inner());
 
                 use self::UnaryOp::*;
 
@@ -198,7 +198,7 @@ impl<'g> Compiler<'g> {
             Mutate(ref lhs, ref rhs) => {
                 // Currently just handling Var
                 if let Var(ref var) = lhs.inner() {
-                    self.compile_atom(rhs.inner());
+                    self.compile_expr(rhs.inner());
 
                     if var.is_upvalue() {
                         let idx = self.resolve_upvalue(var.name());
@@ -228,18 +228,18 @@ impl<'g> Compiler<'g> {
                 
                 match op {
                     And => {
-                        self.compile_atom(lhs.inner());
+                        self.compile_expr(lhs.inner());
 
                         let short_circuit_jmp = self.emit_jze();
 
                         self.emit(Op::Pop);
-                        self.compile_atom(rhs.inner());
+                        self.compile_expr(rhs.inner());
 
                         self.patch_jmp(short_circuit_jmp);
                     },
 
                     Or => {
-                        self.compile_atom(lhs.inner());
+                        self.compile_expr(lhs.inner());
 
                         let else_jmp = self.emit_jze();
                         let end_jmp = self.emit_jmp();
@@ -247,7 +247,7 @@ impl<'g> Compiler<'g> {
                         self.patch_jmp(else_jmp);
                         self.emit(Op::Pop);
 
-                        self.compile_atom(rhs.inner());
+                        self.compile_expr(rhs.inner());
                         
                         self.patch_jmp(end_jmp)
                     },
@@ -255,8 +255,8 @@ impl<'g> Compiler<'g> {
                     _ => {
                         // This looks kinda funny, but it's an ok way of matching I guess
 
-                        self.compile_atom(lhs.inner()); // will handle type in the future :)
-                        self.compile_atom(rhs.inner());
+                        self.compile_expr(lhs.inner()); // will handle type in the future :)
+                        self.compile_expr(rhs.inner());
 
                         match op {
                             Add => self.emit(Op::Add),
@@ -290,12 +290,12 @@ impl<'g> Compiler<'g> {
             },
 
             Bind(ref var, ref init) => {
-                self.compile_atom(init.inner());
+                self.compile_expr(init.inner());
                 self.var_define(var, None)
             },
 
             BindGlobal(ref var, ref init) => {
-                self.compile_atom(init.inner());
+                self.compile_expr(init.inner());
                 self.var_define(var, None)
             },
 
@@ -372,8 +372,8 @@ impl<'g> Compiler<'g> {
             self.state_mut().resolve_local(p.name());
         }
 
-        for atom in body.iter() {
-            self.compile_atom(atom)
+        for expr in body.iter() {
+            self.compile_expr(expr)
         }
 
         self.state_mut().end_scope();
@@ -445,15 +445,15 @@ impl<'g> Compiler<'g> {
         }
     }
 
-    fn emit_return(&mut self, ret: Option<AtomNode>) {
+    fn emit_return(&mut self, ret: Option<ExprNode>) {
         let state = self.state_mut();
         let initializer = state.function.name() == "init" && state.method;
 
         if initializer {
             self.emit(Op::GetLocal);
             self.emit_byte(0)
-        } else if let Some(atom) = ret {
-            self.compile_atom(atom.inner())
+        } else if let Some(expr) = ret {
+            self.compile_expr(expr.inner())
         } else {
             self.emit(Op::Nil)
         }

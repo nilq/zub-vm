@@ -6,7 +6,7 @@ use std::cell::RefCell;
 pub struct IrFunctionBuilder {
     pub var: Binding,
     pub params: Vec<Binding>,
-    pub body: Vec<Atom>,
+    pub body: Vec<Expr>,
     pub method: bool, // false by default
 }
 
@@ -23,7 +23,7 @@ impl IrFunctionBuilder {
         }
     }
 
-    pub fn from(var: Binding, params: Vec<Binding>, body: Vec<Atom>) -> Self {
+    pub fn from(var: Binding, params: Vec<Binding>, body: Vec<Expr>) -> Self {
         IrFunctionBuilder {
             var,
             params,
@@ -37,7 +37,7 @@ impl IrFunctionBuilder {
         self
     }
 
-    pub fn body(mut self, body: Vec<Atom>) -> Self {
+    pub fn body(mut self, body: Vec<Expr>) -> Self {
         self.body = body;
         self
     }
@@ -58,7 +58,7 @@ impl IrFunctionBuilder {
 
 pub struct IrBuilder {
     info: Program,
-    program: Vec<Atom>,
+    program: Vec<Expr>,
 }
 
 impl IrBuilder {
@@ -76,19 +76,19 @@ impl IrBuilder {
         }
     }
 
-    pub fn ret(&mut self, value: Option<AtomNode>) {
+    pub fn ret(&mut self, value: Option<ExprNode>) {
         self.emit(
-            Atom::Return(value)
+            Expr::Return(value)
         )
     }
 
-    pub fn call(&mut self, callee: AtomNode, args: Vec<AtomNode>, retty: Option<TypeInfo>) -> AtomNode {
+    pub fn call(&mut self, callee: ExprNode, args: Vec<ExprNode>, retty: Option<TypeInfo>) -> ExprNode {
         let call = Call {
             callee,
             args
         };
 
-        Atom::Call(call).node(
+        Expr::Call(call).node(
             if let Some(info) = retty {
                 info
             } else {
@@ -97,21 +97,21 @@ impl IrBuilder {
         )
     }
 
-    pub fn var(&self, binding: Binding) -> Atom {
-        Atom::Var(binding)
+    pub fn var(&self, binding: Binding) -> Expr {
+        Expr::Var(binding)
     }
 
-    pub fn mutate(&mut self, lhs: AtomNode, rhs: AtomNode) {
-        self.emit(Atom::Mutate(lhs, rhs))
+    pub fn mutate(&mut self, lhs: ExprNode, rhs: ExprNode) {
+        self.emit(Expr::Mutate(lhs, rhs))
     }
 
     // Binding to be resolved manually
-    pub fn bind(&mut self, binding: Binding, rhs: AtomNode) {
-        self.emit( Atom::Bind(binding, rhs))
+    pub fn bind(&mut self, binding: Binding, rhs: ExprNode) {
+        self.emit( Expr::Bind(binding, rhs))
     }
 
     // Binds a clean local binding, should be resolved after
-    pub fn bind_local(&mut self, name: &str, rhs: AtomNode, depth: usize, function_depth: usize) {
+    pub fn bind_local(&mut self, name: &str, rhs: ExprNode, depth: usize, function_depth: usize) {
         let mut binding = Binding::local(name);
 
         binding.resolve(depth, function_depth);
@@ -119,60 +119,60 @@ impl IrBuilder {
         self.bind(binding, rhs)
     }
 
-    pub fn bind_global(&mut self, name: &str, rhs: AtomNode) {
+    pub fn bind_global(&mut self, name: &str, rhs: ExprNode) {
         let binding = Binding::global(name);
 
-        self.emit(Atom::BindGlobal(binding, rhs))
+        self.emit(Expr::BindGlobal(binding, rhs))
     }
 
-    pub fn binary(&self, lhs: AtomNode, op: BinaryOp, rhs: AtomNode) -> AtomNode {
-        Atom::Binary(lhs, op, rhs).node(TypeInfo::none(true))
+    pub fn binary(&self, lhs: ExprNode, op: BinaryOp, rhs: ExprNode) -> ExprNode {
+        Expr::Binary(lhs, op, rhs).node(TypeInfo::none(true))
     }
 
-    pub fn unary(op: UnaryOp, rhs: AtomNode) -> Atom {
-        Atom::Unary(op, rhs)
+    pub fn unary(op: UnaryOp, rhs: ExprNode) -> Expr {
+        Expr::Unary(op, rhs)
     }
 
-    pub fn int(&mut self, n: i32) -> AtomNode {
+    pub fn int(&mut self, n: i32) -> ExprNode {
         let info = TypeInfo::new(Type::Int, true);
         let lit = Literal::Number(n as f64);
 
-        Atom::Literal(lit).node(info)
+        Expr::Literal(lit).node(info)
     }
 
-    pub fn number(&mut self, n: f64) -> AtomNode {
+    pub fn number(&mut self, n: f64) -> ExprNode {
         let info = TypeInfo::new(Type::Float, true);
         let lit = Literal::Number(n);
 
-        Atom::Literal(lit).node(info)
+        Expr::Literal(lit).node(info)
     }
 
-    pub fn string(&mut self, s: &str) -> AtomNode {
+    pub fn string(&mut self, s: &str) -> ExprNode {
         let info = TypeInfo::new(Type::String, true);
         let lit = Literal::String(s.to_owned());
 
-        Atom::Literal(lit).node(info)
+        Expr::Literal(lit).node(info)
     }
 
-    pub fn bool(&mut self, b: bool) -> AtomNode {
+    pub fn bool(&mut self, b: bool) -> ExprNode {
         let info = TypeInfo::new(Type::Bool, true);
         let lit = Literal::Boolean(b);
 
-        Atom::Literal(lit).node(info)
+        Expr::Literal(lit).node(info)
     }
 
-    pub fn nil(&mut self) -> AtomNode {
+    pub fn nil(&mut self) -> ExprNode {
         let info = TypeInfo::new(Type::Nil, true);
         let lit = Literal::Nil;
 
-        Atom::Literal(lit).node(info)
+        Expr::Literal(lit).node(info)
     }
 
-    pub fn build(self) -> Vec<Atom> {
+    pub fn build(self) -> Vec<Expr> {
         self.program
     }
 
-    pub fn emit(&mut self, atom: Atom) {
+    pub fn emit(&mut self, atom: Expr) {
         self.program.push(atom)
     }
 }

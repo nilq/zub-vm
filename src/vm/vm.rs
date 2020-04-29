@@ -105,7 +105,7 @@ impl VM {
         }
     }
 
-    pub fn exec(&mut self, atoms: &[Atom]) {
+    pub fn exec(&mut self, atoms: &[Expr]) {
         let function = {
             let compiler = Compiler::new(&mut self.heap);
             compiler.compile(atoms)
