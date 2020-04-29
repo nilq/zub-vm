@@ -23,9 +23,9 @@ impl IrFunctionBuilder {
         }
     }
 
-    pub fn new_global(name: &str, function_depth: usize) -> Self {
+    pub fn new_global(name: &str) -> Self {
         IrFunctionBuilder {
-            var: Binding::global(name, function_depth),
+            var: Binding::global(name),
             params: Vec::new(),
             body: Vec::new(),
             method: false
@@ -136,8 +136,8 @@ impl IrBuilder {
         binding
     }
 
-    pub fn bind_global(&mut self, name: &str, rhs: ExprNode, depth: usize) -> Binding {
-        let binding = Binding::global(name, depth);
+    pub fn bind_global(&mut self, name: &str, rhs: ExprNode) -> Binding {
+        let binding = Binding::global(name);
 
         self.emit(Expr::BindGlobal(binding.clone(), rhs));
 

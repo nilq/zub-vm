@@ -40,11 +40,11 @@ impl Binding {
         }
     }
 
-    pub fn global(name: &str, function_depth: usize) -> Self {
+    pub fn global(name: &str) -> Self {
         Binding {
             name: name.to_string(),
             depth: None,
-            function_depth: function_depth
+            function_depth: 0
         }
     }
 

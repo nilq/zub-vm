@@ -12,7 +12,7 @@ mod tests {
         let mut builder = IrBuilder::new();
 
         let value = builder.number(42.0);
-        builder.bind_global("foo", value, 0);
+        builder.bind_global("foo", value);
 
         let mut vm = VM::new();
 
@@ -31,7 +31,7 @@ mod tests {
         let mut value_ref = Binding::define_local("foo");
         value_ref.resolve(0, 0);
 
-        builder.bind_global("FOO", builder.var(value_ref).node(TypeInfo::none(true)), 0);
+        builder.bind_global("FOO", builder.var(value_ref).node(TypeInfo::none(true)));
 
         let mut vm = VM::new();
 
@@ -49,7 +49,7 @@ mod tests {
 
         let sum = builder.binary(a, BinaryOp::Add, b);
 
-        builder.bind_global("sum", sum, 0);
+        builder.bind_global("sum", sum);
 
         let mut vm = VM::new();
         vm.exec(&builder.build());
@@ -105,7 +105,7 @@ mod tests {
         let callee = builder.var(Binding::local("foo", 0, 0));
         let call = builder.call(callee.node(TypeInfo::none(true)), args, None);
 
-        builder.bind_global("bar", call, 0); // assign "bar" to call here
+        builder.bind_global("bar", call); // assign "bar" to call here
 
         let mut vm = VM::new();
         vm.exec(&builder.build());
@@ -136,12 +136,12 @@ mod tests {
         
         let args = vec![a, b];
 
-        let callee = body_builder.var(Binding::global("foo", 0));
+        let callee = body_builder.var(Binding::global("foo"));
         let call = body_builder.call(callee.node(TypeInfo::none(true)), args, None);
 
         body_builder.ret(Some(call));
 
-        let func = IrFunctionBuilder::new_global("foo", 0)
+        let func = IrFunctionBuilder::new_global("foo")
             .params(
                 vec![
                     Binding::local("a", 1, 0),
@@ -165,7 +165,7 @@ mod tests {
         let callee = builder.var(Binding::local("foo", 0, 0));
         let call = builder.call(callee.node(TypeInfo::none(true)), args, None);
 
-        builder.bind_global("bar", call, 0); // assign "bar" to call here
+        builder.bind_global("bar", call); // assign "bar" to call here
 
         let mut vm = VM::new();
         vm.exec(&builder.build());
