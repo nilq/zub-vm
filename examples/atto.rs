@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use zub::{ir::*, vm::*};
 
 fn parse_expr(
@@ -52,27 +51,23 @@ fn parse_fn<'a>(
     match *slice {
         [] => None,
         ["fn", name, ..] => {
-            *slice = &slice[2..];
-            let mut params = HashMap::new();
-            slice
+            let params = slice[2..]
                 .into_iter()
                 .take_while(|token| **token != "is")
-                .for_each(|param| {
-                    params.insert(param, Binding::define_local(param));
-                    *slice = &slice[1..];
-                });
-            *slice = &slice[1..];
+                .map(|param| (param, Binding::define_local(param)))
+                .collect::<Vec<_>>();
+            *slice = &slice[params.len() + 3..];
             let mut builder = IrBuilder::new();
             let body = parse_expr(&mut builder, slice, &|ident| if ident == *name {
                 Some((params.len(), Binding::define_local(ident)))
-            } else if let Some(binding) = params.get(&ident) {
+            } else if let Some((_, binding)) = params.iter().rev().find(|(name, _)| *name == &ident) {
                 Some((0, binding.clone()))
             } else {
                 get_binding(ident)
             })?;
             builder.ret(Some(body));
             let f = IrFunctionBuilder::new_global(*name)
-                .params(params.values().cloned().collect())
+                .params(params.iter().map(|(_, b)| b).cloned().collect())
                 .body(builder.build())
                 .build();
             Some((*name, params.len(), f))
@@ -94,24 +89,20 @@ fn main() {
     let tokens = CODE.split_whitespace().collect::<Vec<_>>();
 
     let mut builder = IrBuilder::new();
-    let mut fns = HashMap::<_, (usize, _)>::new();
+    let mut fns = Vec::<(&str, usize, Binding)>::new();
     let mut token_slice = &tokens[..];
-    while let Some((name, args, f)) = parse_fn(&mut builder, &mut token_slice, &|name| {
-        fns.get(name).cloned()
+    while let Some((name, args, f)) = parse_fn(&mut builder, &mut token_slice, &|ident| {
+        fns.iter().rev().find(|f| f.0 == ident).map(|f| (f.1, f.2.clone()))
     }) {
         builder.function(f);
-        fns.insert(name, (args, Binding::define_global(name)));
+        fns.push((name, args, Binding::define_global(name)));
     }
 
     let main_var = builder.var(Binding::define_global("main"));
     let main_call = builder.call(main_var, vec![], None);
-    builder.bind_global("main2", main_call);
+    builder.bind_global("entry", main_call);
 
     let mut vm = VM::new();
-
-    let ir = builder.build();
-    //println!("{:#?}", ir);
-    vm.exec(&ir);
-
-    println!("{:?}", vm.globals);
+    vm.exec(&builder.build());
+    println!("{:?}", vm.globals["entry"]);
 }
