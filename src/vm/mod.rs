@@ -4,6 +4,9 @@ pub mod chunk;
 pub mod vm;
 pub mod gc;
 
+use super::compiler::*;
+use super::ir::*;
+
 pub use self::value::*;
 #[macro_use]
 pub use self::chunk::*;

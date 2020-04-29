@@ -168,6 +168,16 @@ impl<'g> Compiler<'g> {
         }
     }
 
+    pub fn compile(mut self, atoms: &[Atom]) -> Function {
+        self.start_function(false, "<zub>", 0, 0);
+
+        for atom in atoms.iter() {
+            self.compile_atom(atom)
+        }
+
+        self.end_function()
+    }
+
     fn compile_atom(&mut self, atom: &Atom) {
         use self::Atom::*;
 

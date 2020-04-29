@@ -105,6 +105,21 @@ impl VM {
         }
     }
 
+    pub fn exec(&mut self, atoms: &[Atom]) {
+        let function = {
+            let compiler = Compiler::new(&mut self.heap);
+            compiler.compile(atoms)
+        };
+
+        let closure = Closure::new(function, Vec::new());
+        let value = self.allocate(Object::Closure(closure)).into();
+
+        self.push(value);
+        self.call(0);
+
+        self.run()
+    }
+
     fn run(&mut self)  {
         while !self.frames.is_empty() {
             let inst = self.read_byte();
