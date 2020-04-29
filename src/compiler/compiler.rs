@@ -86,7 +86,7 @@ impl CompileState {
             }
         }
         
-        panic!("TODO: unresolved var")
+        panic!("TODO: unresolved var: {}", var)
     }
 
     fn add_upvalue(&mut self, index: u8, is_local: bool) -> u8 {
@@ -222,6 +222,27 @@ impl<'g> Compiler<'g> {
             },
 
             Return(val) => self.emit_return((*val).clone()),
+
+            Function(ref ir_func) => {
+                self.function_decl(ir_func);
+                self.var_define(&ir_func.var, None)
+            },
+
+            Call(ref call) => {
+                let arity = call.args.len();
+
+                if arity > 8 {
+                    panic!("will fix this limitation asap")
+                }
+
+                self.compile_expr(call.callee.inner());
+
+                for arg in call.args.iter() {
+                    self.compile_expr(arg.inner())
+                }
+
+                self.emit(Op::Call(arity as u8))
+            },
 
             Binary(lhs, op, rhs) => {
                 use self::BinaryOp::*;

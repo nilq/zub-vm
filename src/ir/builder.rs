@@ -14,9 +14,18 @@ pub struct IrFunctionBuilder {
 // ... a small experimental thing
 impl IrFunctionBuilder {
     // the build-a-function way
-    pub fn new_local(name: &str) -> Self {
+    pub fn new_local(name: &str, depth: usize, function_depth: usize) -> Self {
         IrFunctionBuilder {
-            var: Binding::local(name),
+            var: Binding::local(name, depth, function_depth),
+            params: Vec::new(),
+            body: Vec::new(),
+            method: false
+        }
+    }
+
+    pub fn new_global(name: &str, function_depth: usize) -> Self {
+        IrFunctionBuilder {
+            var: Binding::global(name, function_depth),
             params: Vec::new(),
             body: Vec::new(),
             method: false
@@ -40,6 +49,10 @@ impl IrFunctionBuilder {
     pub fn body(mut self, body: Vec<Expr>) -> Self {
         self.body = body;
         self
+    }
+
+    pub fn var(&self) -> &Binding {
+        &self.var
     }
 
     pub fn build(self) -> IrFunction {
@@ -110,17 +123,19 @@ impl IrBuilder {
         self.emit( Expr::Bind(binding, rhs))
     }
 
+    pub fn function(&mut self, func: IrFunction) {
+        self.emit(Expr::Function(func))
+    }
+
     // Binds a clean local binding, should be resolved after
     pub fn bind_local(&mut self, name: &str, rhs: ExprNode, depth: usize, function_depth: usize) {
-        let mut binding = Binding::local(name);
-
-        binding.resolve(depth, function_depth);
+        let binding = Binding::local(name, depth, function_depth);
 
         self.bind(binding, rhs)
     }
 
-    pub fn bind_global(&mut self, name: &str, rhs: ExprNode) {
-        let binding = Binding::global(name);
+    pub fn bind_global(&mut self, name: &str, rhs: ExprNode, depth: usize) {
+        let binding = Binding::global(name, depth);
 
         self.emit(Expr::BindGlobal(binding, rhs))
     }

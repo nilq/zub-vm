@@ -24,7 +24,7 @@ pub struct Binding {
 }
 
 impl Binding {
-    pub fn global(name: &str) -> Self {
+    pub fn define_global(name: &str) -> Self {
         Binding {
             name: name.to_string(),
             depth: None,
@@ -32,11 +32,27 @@ impl Binding {
         }
     }
 
-    pub fn local(name: &str) -> Self {
+    pub fn define_local(name: &str) -> Self {
         Binding {
             name: name.to_string(),
             depth: Some(0),
             function_depth: 0
+        }
+    }
+
+    pub fn global(name: &str, function_depth: usize) -> Self {
+        Binding {
+            name: name.to_string(),
+            depth: None,
+            function_depth: function_depth
+        }
+    }
+
+    pub fn local(name: &str, depth: usize, function_depth: usize) -> Self {
+        Binding {
+            name: name.to_string(),
+            depth: Some(depth),
+            function_depth: function_depth
         }
     }
 
