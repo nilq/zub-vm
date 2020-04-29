@@ -1,57 +1,3 @@
-//! # Broom
-//!
-//! An ergonomic tracing garbage collector that supports mark 'n sweep garbage collection.
-//!
-//! ## Example
-//!
-//! ```
-//! use broom::prelude::*;
-//!
-//! // The type you want the heap to contain
-//! pub enum Object {
-//!     Num(f64),
-//!     List(Vec<Handle<Self>>),
-//! }
-//!
-//! // Tell the garbage collector how to explore a graph of this object
-//! impl Trace<Self> for Object {
-//!     fn trace(&self, tracer: &mut Tracer<Self>) {
-//!         match self {
-//!             Object::Num(_) => {},
-//!             Object::List(objects) => objects.trace(tracer),
-//!         }
-//!     }
-//! }
-//!
-//! // Create a new heap
-//! let mut heap = Heap::default();
-//!
-//! // Temporary objects are cheaper than rooted objects, but don't survive heap cleans
-//! let a = heap.insert_temp(Object::Num(42.0));
-//! let b = heap.insert_temp(Object::Num(1337.0));
-//!
-//! // Turn the numbers into a rooted list
-//! let c = heap.insert(Object::List(vec![a, b]));
-//!
-//! // Change one of the numbers - this is safe, even if the object is self-referential!
-//! *heap.get_mut(a).unwrap() = Object::Num(256.0);
-//!
-//! // Create another number object
-//! let d = heap.insert_temp(Object::Num(0.0));
-//!
-//! // Clean up unused heap objects
-//! heap.clean();
-//!
-//! // a, b and c are all kept alive because c is rooted and a and b are its children
-//! assert!(heap.contains(a));
-//! assert!(heap.contains(b));
-//! assert!(heap.contains(c));
-//!
-//! // Because `d` was temporary and unused, it did not survive the heap clean
-//! assert!(!heap.contains(d));
-//!
-//! ```
-
 pub mod trace;
 pub mod tag;
 
@@ -65,13 +11,6 @@ use trace::*;
 
 type Generation = usize;
 
-/// A heap for storing objects.
-///
-/// [`Heap`] is the centre of `broom`'s universe. It's the singleton through with manipulation of
-/// objects occurs. It can be used to create, access, mutate and garbage-collect objects.
-///
-/// Note that heaps, and the objects associated with them, are *not* compatible: this means that
-/// you may not create trace routes (see [`Trace`]) that cross the boundary between different heaps.
 pub struct Heap<T> {
     last_sweep: usize,
     object_sweeps: HashMap<Handle<T>, usize>,
@@ -197,12 +136,6 @@ impl<T: Trace<T>> Heap<T> {
         unsafe { &mut *handle.ptr }
     }
 
-    /// Clean orphaned objects from the heap, excluding those that can be reached from the given
-    /// handle iterator.
-    ///
-    /// This function is useful in circumstances in which you wish to keep certain items alive over
-    /// a garbage collection without the addition cost of a [`Rooted`] handle. An example of this
-    /// might be stack items in a garbage-collected language
     pub fn clean_excluding(&mut self, excluding: impl IntoIterator<Item=Handle<T>>) {
         let new_sweep = self.last_sweep + 1;
         let mut tracer = Tracer {
@@ -265,10 +198,6 @@ impl<T> Drop for Heap<T> {
     }
 }
 
-/// A handle to a heap object.
-///
-/// [`Handle`] may be cheaply copied as is necessary to serve your needs. It's even legal for it
-/// to outlive the object it refers to, provided it is no longer used to access it afterwards.
 #[derive(Debug)]
 pub struct Handle<T> {
     gen: Generation,
@@ -276,45 +205,10 @@ pub struct Handle<T> {
 }
 
 impl<T> Handle<T> {
-    /// Get a reference to the object this handle refers to without checking any invariants.
-    ///
-    /// **You almost certainly do not want to use this function: consider [`Heap::get`] or
-    /// [`Heap::get_unchecked`] instead; both are safer than this function.**
-    ///
-    /// The following invariants must be upheld by you, the responsible programmer:
-    ///
-    /// - The object *must* still be alive (i.e: accessible from the heap it was created on)
-    /// - The object *must not* be mutably accessible elsewhere (i.e: has any live references to
-    ///   it) by any other part of the program. Immutable references are permitted. Other handles
-    ///   (i.e: [`Handle`] or [`Rooted`] are also permitted, provided they are not in use.
-    /// - That a garbage collection of the heap this object belongs to does not occur while the
-    ///   reference this function creates is live.
-    ///
-    /// If *any* of these invariants are not upheld, undefined behaviour will result when using
-    /// this function. If all are upheld, this function provides zero-cost access to underlying
-    /// object.
     pub unsafe fn get_unchecked(&self) -> &T {
         &*self.ptr
     }
 
-    /// Get a mutable reference to the object this handle refers to without checking any
-    /// invariants.
-    ///
-    /// **You almost certainly do not want to use this function: consider [`Heap::mutate`] or
-    /// [`Heap::mutate_unchecked`] instead; both are safer than this function.**
-    ///
-    /// The following invariants must be upheld by you, the responsible programmer:
-    ///
-    /// - The object *must* still be alive (i.e: accessible from the heap it was created on)
-    /// - The object *must not* be accessible elsewhere (i.e: has any live references to it),
-    ///   either mutably or immutably, by any other part of the program. Other handles (i.e:
-    ///   [`Handle`] or [`Rooted`] are permitted, provided they are not in use.
-    /// - That a garbage collection of the heap this object belongs to does not occur while the
-    ///   reference this function creates is live.
-    ///
-    /// If *any* of these invariants are not upheld, undefined behaviour will result when using
-    /// this function. If all are upheld, this function provides zero-cost access to underlying
-    /// object.
     pub unsafe fn get_mut_unchecked(&self) -> &mut T {
         &mut *self.ptr
     }
@@ -353,15 +247,8 @@ impl<T> From<Rooted<T>> for Handle<T> {
     }
 }
 
-/// A handle to a heap object that guarantees the object will not be cleaned up by the garbage
-/// collector.
-///
-/// [`Rooted`] may be cheaply copied as is necessary to serve your needs. It's even legal for it
-/// to outlive the object it refers to, provided it is no longer used to access it afterwards.
 #[derive(Debug)]
 pub struct Rooted<T> {
-    // TODO: Is an Rc the best we can do? It might be better instead to store the strong count with
-    // the object to avoid an extra allocation.
     rc: Rc<()>,
     handle: Handle<T>,
 }

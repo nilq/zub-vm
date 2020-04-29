@@ -294,6 +294,11 @@ impl<'g> Compiler<'g> {
                 self.var_define(var, None)
             },
 
+            BindGlobal(ref var, ref init) => {
+                self.compile_atom(init.inner());
+                self.var_define(var, None)
+            },
+
             _ => todo!()
         }
     }

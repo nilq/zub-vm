@@ -12,10 +12,12 @@ mod tests {
         let mut builder = IrBuilder::new();
 
         let value = builder.number(42.0);
-        builder.bind_local("foo", value, 0, 0);
+        builder.bind_global("foo", value);
 
         let mut vm = VM::new();
 
-        vm.exec(&builder.build())
+        vm.exec(&builder.build());
+
+        println!("{:#?}", vm.globals)
     }
 }

@@ -168,7 +168,7 @@ impl IrBuilder {
         self.program
     }
 
-    fn emit(&mut self, atom: Atom) {
+    pub fn emit(&mut self, atom: Atom) {
         self.program.push(atom)
     }
 }

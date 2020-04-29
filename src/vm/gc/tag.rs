@@ -1,18 +1,10 @@
 use super::Handle;
 
-/// A tagged handle, possibly to a heap object.
-///
-/// [`TaggedHandle`] provides the same guarantees as [`Handle`], while enabling the encoding of non-pointer
-/// data into its internal representation.
-///
-/// A tagged handle can be decoded into a [`Tag`] to distinguish objects on the heap from stack values.
 #[derive(Debug)]
 pub struct TaggedHandle<T> {
     handle: Handle<T>,
 }
 
-/// A decoded [`TaggedHandle`], providing access to either its internal [`Handle`] or one of its
-/// tag values.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Tag<T> {
     Tag(u8),
@@ -24,11 +16,6 @@ const QNAN: u64 = 0x7ffc000000000000;
 const SIGN: u64 = 1 << 63;
 
 impl<T> TaggedHandle<T> {
-    /// Create a [`TaggedHandle`] given a raw representation of its pointer.
-    ///
-    /// Safety:
-    ///
-    /// It is only valid to create a TaggedHandle from a non-heap (tagged) value.
     pub unsafe fn from_raw(raw: u64) -> Self {
         TaggedHandle {
             handle: Handle {
@@ -38,12 +25,10 @@ impl<T> TaggedHandle<T> {
         }
     }
 
-    /// Return the raw representation of this [`TaggedHandle`]'s pointer.
     pub fn to_raw(&self) -> u64 {
         self.handle.ptr as u64
     }
 
-    /// Create a [`TaggedHandle`] that contains a [`Handle`].
     pub fn from_handle(handle: Handle<T>) -> Self {
         let u = (handle.ptr as u64) | QNAN | SIGN;
         TaggedHandle{
@@ -54,7 +39,6 @@ impl<T> TaggedHandle<T> {
         }
     }
 
-    /// Create a [`TaggedHandle`] that contains a [`f64`].
     pub fn from_float(float: f64) -> Self {
         TaggedHandle {
             handle: Handle {
@@ -64,7 +48,6 @@ impl<T> TaggedHandle<T> {
         }
     }
 
-    /// Create a [`TaggedHandle`] that contains a [`u8`].
     pub fn from_tag(tag: u8) -> Self {
         TaggedHandle {
             handle: Handle {
@@ -74,15 +57,12 @@ impl<T> TaggedHandle<T> {
         }
     }
 
-    /// Decode a [`TaggedHandle`] to differentiate valid [`Handle`] objects from simple tag values.
     pub fn decode(self) -> Tag<T> {
         let u = self.handle.ptr as u64;
         if u & QNAN != QNAN {
             return Tag::Float(unsafe { ::std::mem::transmute(u) });
         }
-        // sign bit indicates pointer
         if (u & (QNAN | SIGN)) == (QNAN | SIGN) {
-            // FIXME
             let ptr = u & (!(QNAN | SIGN)); // only keep lower 51 bits
             return Tag::Handle(Handle {
                 gen: self.handle.gen,

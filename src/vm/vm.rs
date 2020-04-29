@@ -86,10 +86,10 @@ pub struct VM {
     heap: Heap<Object>,
     next_gc: usize,
 
-    globals: HashMap<String, Value, FnvBuildHasher>,
-    open_upvalues: Vec<UpValue>,
+    pub globals: HashMap<String, Value, FnvBuildHasher>,
+    pub open_upvalues: Vec<UpValue>,
 
-    stack: Vec<Value>,
+    pub stack: Vec<Value>,
     frames: Vec<CallFrame>,
 }
 
