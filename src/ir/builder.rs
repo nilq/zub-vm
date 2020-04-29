@@ -116,8 +116,8 @@ impl IrBuilder {
         )
     }
 
-    pub fn var(&self, binding: Binding) -> Expr {
-        Expr::Var(binding)
+    pub fn var(&self, binding: Binding) -> ExprNode {
+        Expr::Var(binding).node(TypeInfo::none(true))
     }
 
     pub fn mutate(&mut self, lhs: ExprNode, rhs: ExprNode) -> ExprNode {

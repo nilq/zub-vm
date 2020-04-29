@@ -1,5 +1,5 @@
 [package]
-name = "zub-vm"
+name = "zub"
 version = "0.1.0"
 authors = ["nilq <i.am.niels.nielsen@gmail.com>"]
 edition = "2018"
