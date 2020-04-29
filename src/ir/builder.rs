@@ -21,6 +21,59 @@ impl IrBuilder {
         }
     }
 
+    pub fn ret(&mut self, value: Option<AtomNode>) {
+        self.emit(
+            Atom::Return(value)
+        )
+    }
+
+    pub fn call(&mut self, callee: AtomNode, args: Vec<AtomNode>, retty: Option<TypeInfo>) -> AtomNode {
+        let call = Call {
+            callee,
+            args
+        };
+
+        Atom::Call(call).node(
+            if let Some(info) = retty {
+                info
+            } else {
+                TypeInfo::none(true)
+            }
+        )
+    }
+
+    pub fn mutate(&mut self, lhs: AtomNode, rhs: AtomNode) {
+        self.emit(Atom::Mutate(lhs, rhs))
+    }
+
+    // Binding to be resolved manually
+    pub fn bind(&mut self, id: LocalId, binding: Binding, rhs: AtomNode) {
+        self.emit( Atom::Bind(id, binding, rhs))
+    }
+
+    // Binds a clean local binding, should be resolved after
+    pub fn bind_local(&mut self, id: LocalId, name: &str, rhs: AtomNode, depth: usize, function_depth: usize) {
+        let mut binding = Binding::local(name);
+
+        binding.resolve(depth, function_depth);
+
+        self.bind(id, binding, rhs)
+    }
+
+    pub fn bind_global(&mut self, name: &str, rhs: AtomNode) {
+        let binding = Binding::global(name);
+
+        self.emit(Atom::Global(binding, rhs))
+    }
+
+    pub fn binary(lhs: AtomNode, op: BinaryOp, rhs: AtomNode) -> Atom {
+        Atom::Binary(lhs, op, rhs)
+    }
+
+    pub fn unary(op: UnaryOp, rhs: AtomNode) -> Atom {
+        Atom::Unary(op, rhs)
+    }
+
     pub fn int(&mut self, n: i32) -> AtomNode {
         let info = TypeInfo::new(Type::Int, true);
         let lit = Literal::Number(n as f64);
@@ -54,34 +107,6 @@ impl IrBuilder {
         let lit = Literal::Nil;
 
         Atom::Literal(lit).node(info)
-    }
-
-    // Binding to be resolved manually
-    pub fn bind(&mut self, id: LocalId, binding: Binding, rhs: AtomNode) {
-        self.emit( Atom::Bind(id, binding, rhs))
-    }
-
-    // Binds a clean local binding, should be resolved after
-    pub fn bind_local(&mut self, id: LocalId, name: &str, rhs: AtomNode, depth: usize, function_depth: usize) {
-        let mut binding = Binding::local(name);
-
-        binding.resolve(depth, function_depth);
-
-        self.bind(id, binding, rhs)
-    }
-
-    pub fn bind_global(&mut self, name: &str, rhs: AtomNode) {
-        let binding = Binding::global(name);
-
-        self.emit(Atom::Global(binding, rhs))
-    }
-
-    pub fn binary(lhs: AtomNode, op: BinaryOp, rhs: AtomNode) -> Atom {
-        Atom::Binary(lhs, op, rhs)
-    }
-
-    pub fn unary(op: UnaryOp, rhs: AtomNode) -> Atom {
-        Atom::Unary(op, rhs)
     }
 
     fn emit(&mut self, atom: Atom) {
