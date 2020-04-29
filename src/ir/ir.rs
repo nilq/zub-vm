@@ -16,7 +16,7 @@ pub enum Literal {
 }
 
 // When depth is None, we're dealing with a global.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Binding {
     name: String,
     pub depth: Option<usize>,
@@ -157,7 +157,7 @@ pub enum Expr {
 
     Literal(Literal),
 
-    Bind(Binding, ExprNode), // @zesterer: like `with` 
+    Bind(Binding, ExprNode), // @zesterer: like `with`
     BindGlobal(Binding, ExprNode),
 
     Var(Binding), // access binding
