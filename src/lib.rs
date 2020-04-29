@@ -31,7 +31,7 @@ mod tests {
         let mut value_ref = Binding::define_local("foo");
         value_ref.resolve(0, 0);
 
-        builder.bind_global("FOO", builder.var(value_ref).node(TypeInfo::none(true)));
+        builder.bind_global("FOO", builder.var(value_ref));
 
         let mut vm = VM::new();
 
@@ -71,11 +71,11 @@ mod tests {
 
         let a = body_builder.var(
                 Binding::local("a", 1, 1)
-            ).node(TypeInfo::none(true));
+            );
 
         let b = body_builder.var(
             Binding::local("b", 1, 1)
-            ).node(TypeInfo::none(true));
+            );
 
         let sum = body_builder.binary(a, BinaryOp::Add, b);
 
@@ -103,7 +103,7 @@ mod tests {
         ];
 
         let callee = builder.var(Binding::local("foo", 0, 0));
-        let call = builder.call(callee.node(TypeInfo::none(true)), args, None);
+        let call = builder.call(callee, args, None);
 
         builder.bind_global("bar", call); // assign "bar" to call here
 
