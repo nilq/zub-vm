@@ -6,6 +6,16 @@ pub mod compiler;
 mod tests {
     #[test]
     fn it_works() {
-        assert_eq!(2 + 2, 4);
+        use super::vm::*;
+        use super::ir::*;
+
+        let mut builder = IrBuilder::new();
+
+        let value = builder.number(42.0);
+        builder.bind_local("foo", value, 0, 0);
+
+        let mut vm = VM::new();
+
+        vm.exec(&builder.build())
     }
 }
