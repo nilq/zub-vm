@@ -9,7 +9,12 @@ fn parse_expr(
         [] => None,
         [ident, ..] => {
             *slice = &slice[1..];
-            if let Some(op) = match *ident {
+            if *ident == "if" {
+                let cond = parse_expr(builder, slice, get_binding)?;
+                let a = parse_expr(builder, slice, get_binding)?;
+                let b = parse_expr(builder, slice, get_binding)?;
+                Some(builder.if_(cond, a, Some(b)))
+            } else if let Some(op) = match *ident {
                 "+" => Some(BinaryOp::Add),
                 "-" => Some(BinaryOp::Sub),
                 "*" => Some(BinaryOp::Mul),
@@ -29,6 +34,13 @@ fn parse_expr(
                 Some(builder.binary(a, op, b))
             } else if let Ok(n) = ident.parse() {
                 Some(builder.number(n))
+            } else if let Some(val) = match *ident {
+                "true" => Some(builder.bool(true)),
+                "false" => Some(builder.bool(false)),
+                "null" => Some(builder.nil()),
+                _ => None,
+            } {
+                Some(val)
             } else if let Some((args, binding)) = get_binding(ident) {
                 let args = (0..args).map(|_| parse_expr(builder, slice, get_binding)).collect::<Option<_>>()?;
                 Some(builder.call(
@@ -59,7 +71,7 @@ fn parse_fn<'a>(
             *slice = &slice[params.len() + 3..];
             let mut builder = IrBuilder::new();
             let body = parse_expr(&mut builder, slice, &|ident| if ident == *name {
-                Some((params.len(), Binding::define_local(ident)))
+                Some((params.len(), Binding::define_global(ident)))
             } else if let Some((_, binding)) = params.iter().rev().find(|(name, _)| *name == &ident) {
                 Some((0, binding.clone()))
             } else {
@@ -77,12 +89,19 @@ fn parse_fn<'a>(
 }
 
 const CODE: &str = r#"
+    fn ten is 10
+
     fn add x y is + x y
 
     fn sub x y is - x y
 
+    fn factorial x is
+        if = x 0
+            1
+        * x factorial - x 1
+
     fn main is
-        add 5 sub 7 4
+        factorial ten
 "#;
 
 fn main() {
