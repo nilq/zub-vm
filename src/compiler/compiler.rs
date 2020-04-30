@@ -244,6 +244,46 @@ impl<'g> Compiler<'g> {
                 self.emit(Op::Call(arity as u8))
             },
 
+            If(ref cond, ref then, ref els) => {
+                self.compile_expr(cond);
+
+                let else_jmp = self.emit_jze();
+
+                self.emit(Op::Pop);
+                self.compile_expr(then);
+
+                let end_jmp = self.emit_jmp();
+
+                self.patch_jmp(else_jmp);
+                self.emit(Op::Pop);
+
+                if let &Some(ref els) = els {
+                    self.compile_expr(els)
+                }
+
+                self.patch_jmp(end_jmp)
+            },
+
+            While(ref cond, ref body) => {
+                let ip = self.ip();
+
+                self.compile_expr(cond);
+
+                let end_jmp = self.emit_jze();
+
+                self.emit(Op::Pop);
+                self.compile_expr(body);
+
+                self.emit_loop(ip);
+                self.patch_jmp(end_jmp);
+
+                self.emit(Op::Pop);
+
+                for b in self.state_mut().breaks() {
+                    self.patch_jmp(b)
+                }
+            },
+
             Binary(lhs, op, rhs) => {
                 use self::BinaryOp::*;
                 

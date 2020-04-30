@@ -268,7 +268,6 @@ impl Op {
             SetUpValue => buf.push(0x23),
             Closure => buf.push(0x24),
             DefineGlobal => buf.push(0x25),
-
             Class(idx) => { buf.push(0x26); buf.push(idx); },
             GetProperty => buf.push(0x27),
             SetProperty => buf.push(0x28),
