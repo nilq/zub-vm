@@ -254,18 +254,18 @@ impl<'g> Compiler<'g> {
             },
 
             ListGet(ref list, ref index) => {
+                self.compile_expr(index);
                 self.compile_expr(list);
 
                 self.emit(Op::GetElement);
-                self.emit_byte(*index as u8)
             },
 
             ListSet(ref list, ref index, ref value) => {
                 self.compile_expr(value);
+                self.compile_expr(index);
                 self.compile_expr(list);
 
                 self.emit(Op::SetElement);
-                self.emit_byte(*index as u8)
             },
 
             If(ref cond, ref then, ref els) => {

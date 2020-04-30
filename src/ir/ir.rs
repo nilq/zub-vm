@@ -182,8 +182,8 @@ pub enum Expr {
     While(ExprNode, ExprNode),
 
     List(Vec<ExprNode>),
-    ListGet(ExprNode, usize),
-    ListSet(ExprNode, usize, ExprNode),
+    ListGet(ExprNode, ExprNode),
+    ListSet(ExprNode, ExprNode, ExprNode),
 
     Break,
 }

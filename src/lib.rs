@@ -155,12 +155,14 @@ mod tests {
 
 
         let var = builder.var(bob);
+
+        let index = builder.int(0);
         
         let new_element = builder.number(777.0);
-        let set_element = builder.list_set(var.clone(), 0, new_element);
+        let set_element = builder.list_set(var.clone(), index.clone(), new_element);
         builder.emit(set_element);
 
-        let right = builder.list_get(var, 0);
+        let right = builder.list_get(var, index);
 
         builder.bind(Binding::global("element"), right); // expect 777.0
 

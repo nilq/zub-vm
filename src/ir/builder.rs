@@ -124,11 +124,11 @@ impl IrBuilder {
         Expr::List(content).node(TypeInfo::none(true))
     }
 
-    pub fn list_get(&self, list: ExprNode, index: usize) -> ExprNode {
+    pub fn list_get(&self, list: ExprNode, index: ExprNode) -> ExprNode {
         Expr::ListGet(list, index).node(TypeInfo::none(true))
     }
 
-    pub fn list_set(&self, list: ExprNode, index: usize, value: ExprNode) -> ExprNode {
+    pub fn list_set(&self, list: ExprNode, index: ExprNode, value: ExprNode) -> ExprNode {
         Expr::ListSet(list, index, value).node(TypeInfo::none(true))
     }
 

@@ -415,7 +415,11 @@ impl VM {
     #[inline]
     fn set_element(&mut self) {
         let list = self.pop();
-        let idx  = self.read_byte();
+        let idx  = if let Variant::Float(ref index) = self.pop().decode() {
+            *index as usize
+        } else {
+            panic!("Can't index list with non-number")
+        };
 
         let value = self.pop();
 
@@ -431,7 +435,11 @@ impl VM {
     #[inline]
     fn get_element(&mut self) {
         let list = self.pop();
-        let idx  = self.read_byte();
+        let idx  = if let Variant::Float(ref index) = self.pop().decode() {
+            *index as usize
+        } else {
+            panic!("Can't index list with non-number")
+        };
 
         let list_handle = list
             .as_object()
