@@ -4,7 +4,6 @@ use super::*;
 use std::fmt::{Debug, Display};
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::collections::HashMap;
 
 // lol nice
 macro_rules! impl_as (
@@ -24,12 +23,15 @@ pub enum Object {
     Function(Function),
     NativeFunction(NativeFunction),
     Closure(Closure),
+    List(List),
 }
 
 impl Object {
     impl_as!(as_string, String);
     impl_as!(as_closure, Closure);
     impl_as!(as_function, Function);
+    impl_as!(as_list, List);
+
 
     pub fn native_fn(name: &str, arity: u8, function: fn(&Heap<Object>, &[Value]) -> Value) -> Self {
         Object::NativeFunction(
@@ -59,6 +61,7 @@ impl Trace<Self> for Object {
             Function(f) => f.trace(tracer),
             NativeFunction(_) => {},
             Closure(c) => c.trace(tracer),
+            List(l) => l.trace(tracer)
         }
     }
 }
@@ -71,7 +74,8 @@ impl Debug for Object {
             String(ref s) => write!(f, "{:?}", s),
             NativeFunction(ref na) => write!(f, "<native fn {:?}>", na.name),
             Function(ref fun) => write!(f, "<fn {:?}>", fun.name),
-            Closure(ref cl) => write!(f, "<closure {:?}>", cl.function)
+            Closure(ref cl) => write!(f, "<closure {:?}>", cl.function),
+            List(ref ls) => write!(f, "<list [{:?}]>", ls.content.len())
         }
     }
 }
@@ -85,6 +89,7 @@ impl<'h, 'a> Display for WithHeap<'h, &'a Object> {
             NativeFunction(ref na) => write!(f, "<native fn {}>", na.name),
             Function(ref fun) => write!(f, "<fn {}>", fun.name),
             Closure(ref cl) => write!(f, "<fn {}>", cl.function.name),
+            List(ref ls) => write!(f, "<list [{}]>", ls.content.len())
         }
     }
 }
@@ -202,6 +207,48 @@ impl UpValue {
     }
 }
 
+#[derive(Debug)]
+pub struct List {
+    pub content: Vec<Value>,
+}
+
+// Inline everything >:()
+impl List {
+    #[inline]
+    pub fn new(content: Vec<Value>) -> Self {
+        List {
+            content
+        }
+    }
+
+    #[inline]
+    pub fn set(&mut self, idx: usize, value: Value) {
+        self.content[idx] = value
+    }
+
+    #[inline]
+    pub fn push(&mut self, value: Value) {
+        self.content.push(value)
+    }
+
+    #[inline]
+    pub fn pop(&mut self) -> Value {
+        self.content.pop().unwrap()
+    }
+
+    #[inline]
+    pub fn get(&self, idx: usize) -> Value {
+        self.content[idx].clone() // Might not have to use a clone here
+    }
+}
+
+impl Trace<Object> for List {
+    fn trace(&self, tracer: &mut Tracer<Object>) {
+        self.content.iter()
+            .for_each(|v| v.trace(tracer));
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Closure {
     function: Function,
@@ -246,3 +293,4 @@ impl Trace<Object> for Closure {
             .for_each(|v| v.trace(tracer));
     }
 }
+

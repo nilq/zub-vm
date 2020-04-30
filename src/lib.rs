@@ -137,4 +137,36 @@ mod tests {
         vm.add_native("print", print, 1);
         vm.exec(&builder.build());
     }
+
+    #[test]
+    fn list() {
+        let mut builder = IrBuilder::new();
+
+        let content = vec![
+            builder.number(11.0),
+            builder.number(22.0),
+            builder.number(33.0),
+        ];
+
+        let list = builder.list(content);
+
+        let bob = Binding::global("bob");
+        builder.bind(bob.clone(), list);
+
+
+        let var = builder.var(bob);
+        
+        let new_element = builder.number(777.0);
+        let set_element = builder.list_set(var.clone(), 0, new_element);
+        builder.emit(set_element);
+
+        let right = builder.list_get(var, 0);
+
+        builder.bind(Binding::global("element"), right); // expect 777.0
+
+        let mut vm = VM::new();
+        vm.exec(&builder.build());
+
+        println!("{:#?}", vm.globals)
+    }
 }

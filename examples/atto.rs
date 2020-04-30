@@ -89,19 +89,13 @@ fn parse_fn<'a>(
 }
 
 const CODE: &str = r#"
-    fn ten is 10
+fn sum x is
+    if = x 0
+        1
+    + sum - x 1 sum - x 1
 
-    fn add x y is + x y
-
-    fn sub x y is - x y
-
-    fn factorial x is
-        if = x 0
-            1
-        * x factorial - x 1
-
-    fn main is
-        factorial ten
+fn main is
+    sum 12
 "#;
 
 fn main() {

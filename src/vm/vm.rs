@@ -398,6 +398,52 @@ impl VM {
         }
     }
 
+    #[inline]
+    fn list(&mut self) {
+        let element_count = self.read_byte();
+
+        let mut content = Vec::new();
+
+        for _ in 0 .. element_count {
+            content.push(self.pop())
+        }
+
+        let val = self.allocate(Object::List(List::new(content))).into();
+        self.push(val)
+    }
+
+    #[inline]
+    fn set_element(&mut self) {
+        let list = self.pop();
+        let idx  = self.read_byte();
+
+        let value = self.pop();
+
+        let list_object = list
+            .as_object()
+            .map(|o| self.heap.get_mut_unchecked(o));
+
+        if let Some(Object::List(ref mut list)) = list_object {
+            list.set(idx as usize, value)
+        }
+    }
+
+    #[inline]
+    fn get_element(&mut self) {
+        let list = self.pop();
+        let idx  = self.read_byte();
+
+        let list_handle = list
+            .as_object()
+            .unwrap();
+
+        let list = self.deref(list_handle);
+
+        let element = list.as_list().unwrap().get(idx as usize);
+
+        self.push(element)
+    }
+
     fn runtime_error(&self, err: &str) {
         eprintln!("[error]: {}.", err);
         for frame in self.frames.iter().rev() {

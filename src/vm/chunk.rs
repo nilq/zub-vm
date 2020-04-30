@@ -230,6 +230,10 @@ pub enum Op {
     Closure,
     CloseUpValue,
 
+    List,
+    GetElement,
+    SetElement,
+
     Class(u8),
 }
 
@@ -272,6 +276,9 @@ impl Op {
             GetProperty => buf.push(0x27),
             SetProperty => buf.push(0x28),
             Invoke(a) => buf.push(0x29 + a),
+            List => buf.push(0x32),
+            GetElement => buf.push(0x33),
+            SetElement => buf.push(0x34)
         }
     }
 }
@@ -316,6 +323,9 @@ macro_rules! decode_op {
                 // 0x27 => $this.get_property(),
                 // 0x28 => $this.set_property(),
                 // a @ 0x29..=0x31 => $this.invoke(a - 0x29),
+            0x32 => $this.list(),
+            0x33 => $this.get_element(),
+            0x34 => $this.set_element(),
             _ => {
                 panic!("Unknown op {}", $op);
             }

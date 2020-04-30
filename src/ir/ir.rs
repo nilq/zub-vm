@@ -181,6 +181,10 @@ pub enum Expr {
     If(ExprNode, ExprNode, Option<ExprNode>),
     While(ExprNode, ExprNode),
 
+    List(Vec<ExprNode>),
+    ListGet(ExprNode, usize),
+    ListSet(ExprNode, usize, ExprNode),
+
     Break,
 }
 

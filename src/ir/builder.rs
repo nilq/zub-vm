@@ -120,6 +120,18 @@ impl IrBuilder {
         Expr::Var(binding).node(TypeInfo::none(true))
     }
 
+    pub fn list(&self, content: Vec<ExprNode>) -> ExprNode {
+        Expr::List(content).node(TypeInfo::none(true))
+    }
+
+    pub fn list_get(&self, list: ExprNode, index: usize) -> ExprNode {
+        Expr::ListGet(list, index).node(TypeInfo::none(true))
+    }
+
+    pub fn list_set(&self, list: ExprNode, index: usize, value: ExprNode) -> ExprNode {
+        Expr::ListSet(list, index, value).node(TypeInfo::none(true))
+    }
+
     pub fn mutate(&mut self, lhs: ExprNode, rhs: ExprNode) -> ExprNode {
         let mutate = Expr::Mutate(lhs, rhs);
 

@@ -244,6 +244,30 @@ impl<'g> Compiler<'g> {
                 self.emit(Op::Call(arity as u8))
             },
 
+            List(ref content) => {
+                for el in content.iter().rev() {
+                    self.compile_expr(el)
+                }
+
+                self.emit(Op::List);
+                self.emit_byte(content.len() as u8)
+            },
+
+            ListGet(ref list, ref index) => {
+                self.compile_expr(list);
+
+                self.emit(Op::GetElement);
+                self.emit_byte(*index as u8)
+            },
+
+            ListSet(ref list, ref index, ref value) => {
+                self.compile_expr(value);
+                self.compile_expr(list);
+
+                self.emit(Op::SetElement);
+                self.emit_byte(*index as u8)
+            },
+
             If(ref cond, ref then, ref els) => {
                 self.compile_expr(cond);
 
