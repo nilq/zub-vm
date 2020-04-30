@@ -6,7 +6,8 @@
 ### Building IR is easy
 
 Getting your backend up and running shouldn't have to be hard.
-The following code builds IR for evaluating `sum = 20.0 + 30.0`.
+
+The following code builds IR for evaluating `sum = 20.0 + 30.0`:
 
 ```rust
 let mut builder = IrBuilder::new();
