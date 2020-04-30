@@ -120,6 +120,14 @@ impl VM {
         self.run()
     }
 
+    pub fn add_native(&mut self, name: &str, func: fn(&Heap<Object>, &[Value]) -> Value, arity: u8) {
+        let function = self.allocate(
+            Object::native_fn(name, arity, func)
+        );
+
+        self.globals.insert(name.into(), function.into());
+    }
+
     fn run(&mut self)  {
         while !self.frames.is_empty() {
             let inst = self.read_byte();

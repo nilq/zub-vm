@@ -112,4 +112,29 @@ mod tests {
 
         println!("{:#?}", vm.globals)
     }
+
+    #[test]
+    fn ffi() {
+        let mut builder = IrBuilder::new();
+
+        let hello = Expr::Literal(
+            Literal::String("Hello from Rust :D".to_string())
+        ).node(TypeInfo::new(Type::String, true));
+        
+        let callee = builder.var(Binding::global("print"));
+        let call = builder.call(callee, vec!(hello), None);
+
+        builder.emit(call);
+
+        fn print(heap: &Heap<Object>, args: &[Value]) -> Value {
+            println!("{}", args[1].with_heap(heap));
+            Value::nil()
+        }
+
+
+        let mut vm = VM::new();
+
+        vm.add_native("print", print, 1);
+        vm.exec(&builder.build());
+    }
 }
