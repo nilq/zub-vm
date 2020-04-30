@@ -155,6 +155,22 @@ impl IrBuilder {
         binding
     }
 
+    pub fn if_(&mut self, cond: ExprNode, then: ExprNode, else_body: Option<ExprNode>) -> ExprNode {
+        let if_ = Expr::If(cond, then, else_body).node(TypeInfo::none(true));
+
+        self.emit(if_.clone());
+
+        if_
+    }
+
+    pub fn while_(&mut self, cond: ExprNode, then: ExprNode) -> ExprNode {
+        let while_ = Expr::While(cond, then).node(TypeInfo::none(true));
+
+        self.emit(while_.clone());
+
+        while_
+    }
+
     pub fn bind_global(&mut self, name: &str, rhs: ExprNode) -> Binding {
         let binding = Binding::global(name);
 
