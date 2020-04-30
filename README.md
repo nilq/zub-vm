@@ -27,6 +27,13 @@ let mut vm = VM::new();
 vm.exec(&builder.build());
 ```
 
+## Technicalities
+
+- NaN-tagging value representation
+- Mark n' sweep garbage collection
+- Compact bytecode format
+- Easy-to-use intermediate representation
+
 ## Milestones
 
 - [x] Refined VM based on work by [Mr Briones](https://github.com/cwbriones)
