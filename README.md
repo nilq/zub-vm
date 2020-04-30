@@ -8,7 +8,7 @@
 Getting your backend up and running shouldn't have to be hard.
 The following code builds IR for evaluating `sum = 20.0 + 30.0`.
 
-```rs
+```rust
 let mut builder = IrBuilder::new();
 
 let a = builder.number(20.0);
@@ -21,7 +21,7 @@ builder.bind_global("sum", sum);
 
 When you feel like the IR is looking smooth. Simply let VM throw it through the compiler, and run it.
 
-```rs
+```rust
 let mut vm = VM::new();
 vm.exec(&builder.build());
 ```
