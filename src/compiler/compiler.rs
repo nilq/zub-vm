@@ -62,7 +62,7 @@ impl CompileState {
 
     fn add_local(&mut self, var: &str, depth: usize) -> u8 {
         let depth = self.scope_depth - depth;
-        
+
         if self.locals.len() == std::u8::MAX as usize {
             panic!("local variable overflow")
         }
@@ -85,7 +85,7 @@ impl CompileState {
                 return i as u8
             }
         }
-        
+
         panic!("TODO: unresolved var: {}", var)
     }
 
@@ -116,7 +116,7 @@ impl CompileState {
 
     fn end_scope(&mut self) {
         let last = self.scope_depth;
-        
+
         self.scope_depth -= 1;
 
         let mut ops = Vec::new();
@@ -202,7 +202,7 @@ impl<'g> Compiler<'g> {
 
                     if var.is_upvalue() {
                         let idx = self.resolve_upvalue(var.name());
-                        
+
                         self.emit(Op::SetUpValue);
                         self.emit_byte(idx)
                     } else {
@@ -286,7 +286,7 @@ impl<'g> Compiler<'g> {
 
             Binary(lhs, op, rhs) => {
                 use self::BinaryOp::*;
-                
+
                 match op {
                     And => {
                         self.compile_expr(lhs);
@@ -309,7 +309,7 @@ impl<'g> Compiler<'g> {
                         self.emit(Op::Pop);
 
                         self.compile_expr(rhs);
-                        
+
                         self.patch_jmp(end_jmp)
                     },
 
@@ -411,7 +411,7 @@ impl<'g> Compiler<'g> {
                 .unwrap()
                 .function
                 .chunk_mut();
-            
+
             chunk.string_constant(self.heap, name)
         };
 
@@ -449,7 +449,7 @@ impl<'g> Compiler<'g> {
 
         self.emit(Op::Closure);
         self.emit_byte(idx);
-        
+
         for upvalue in upvalues {
             self.emit_byte(
                 if upvalue.is_local {
@@ -491,9 +491,9 @@ impl<'g> Compiler<'g> {
                 })
                 .next()
                 .expect("upvalue marked during resolution, but wasn't found");
-        
+
         index = self.states[scope + 1].add_upvalue(index, true);
-        
+
         if scope >= self.states.len() - 2 {
             // if we're one scope from current function
             index
@@ -594,7 +594,7 @@ impl<'g> Compiler<'g> {
         let line = self.line();
         let chunk = self.chunk_mut();
 
-        chunk.write(Op::Jump, line);
+        chunk.write(Op::JumpIfFalse, line);
         chunk.write_byte(0xff);
         chunk.write_byte(0xff);
 
@@ -635,5 +635,5 @@ impl<'g> Compiler<'g> {
 
         self.chunk_mut().write_byte_at(idx, lo);
         self.chunk_mut().write_byte_at(idx + 1, hi);
-    } 
+    }
 }
