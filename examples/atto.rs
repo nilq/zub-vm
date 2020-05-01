@@ -70,6 +70,7 @@ fn parse_fn<'a>(
                 .collect::<Vec<_>>();
             *slice = &slice[params.len() + 3..];
             let mut builder = IrBuilder::new();
+
             let body = parse_expr(&mut builder, slice, &|ident| if ident == *name {
                 Some((params.len(), Binding::define_global(ident)))
             } else if let Some((_, binding)) = params.iter().rev().find(|(name, _)| *name == &ident) {
@@ -77,11 +78,15 @@ fn parse_fn<'a>(
             } else {
                 get_binding(ident)
             })?;
-            builder.ret(Some(body));
+
+            let mut weird_test_builder = IrBuilder::new();
+            weird_test_builder.ret(Some(body));
+
             let f = IrFunctionBuilder::new_global(*name)
                 .params(params.iter().map(|(_, b)| b).cloned().collect())
-                .body(builder.build())
+                .body(weird_test_builder.build())
                 .build();
+
             Some((*name, params.len(), f))
         },
         _ => panic!("Not a function: {:?}", slice),
@@ -115,7 +120,13 @@ fn main() {
     let main_call = builder.call(main_var, vec![], None);
     builder.bind_global("entry", main_call);
 
+    let build = builder.build();
+
+    println!("{:#?}", build);
+    println!();
+    println!();
+
     let mut vm = VM::new();
-    vm.exec(&builder.build());
+    vm.exec(&build);
     println!("{:?}", vm.globals["entry"]);
 }
