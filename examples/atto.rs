@@ -122,9 +122,9 @@ fn main() {
 
     let build = builder.build();
 
-    println!("{:#?}", build);
-    println!();
-    println!();
+    // println!("{:#?}", build);
+    // println!();
+    // println!();
 
     let mut vm = VM::new();
     vm.exec(&build);

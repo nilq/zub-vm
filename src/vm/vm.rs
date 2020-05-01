@@ -111,8 +111,8 @@ impl VM {
             compiler.compile(atoms)
         };
 
-        let dis = Disassembler::new(function.chunk(), &self.heap);
-        dis.disassemble();
+        // let dis = Disassembler::new(function.chunk(), &self.heap);
+        // dis.disassemble();
 
         let closure = Closure::new(function, Vec::new());
         let value = self.allocate(Object::Closure(closure)).into();
