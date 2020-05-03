@@ -158,9 +158,9 @@ impl IrBuilder {
 
 
 
-    pub fn function(&mut self, name: &str, params: &[&str], body_build: fn(&mut IrBuilder)) -> ExprNode {
+    pub fn function(&mut self, name: &str, params: &[&str], mut body_build: impl FnMut(&mut IrBuilder)) -> ExprNode {
         let var = Binding::local(name, self.depth, self.function_depth);
-        
+
         let mut body_builder = self.new_function_scope();
 
         body_build(&mut body_builder);
@@ -198,7 +198,7 @@ impl IrBuilder {
 
     pub fn if_(&mut self, cond: ExprNode, then_build: fn(&mut IrBuilder), else_build: Option<fn(&mut IrBuilder)>) -> ExprNode {
         let mut then_builder = self.new_scope();
-    
+
         then_build(&mut then_builder);
 
         let then_body = Expr::Block(then_builder.build()).node(TypeInfo::nil());
@@ -222,7 +222,7 @@ impl IrBuilder {
 
     pub fn while_(&mut self, cond: ExprNode, then_build: fn(&mut IrBuilder)) -> ExprNode {
         let mut then_builder = self.new_scope();
-    
+
         then_build(&mut then_builder);
 
         let then_body = Expr::Block(then_builder.build()).node(TypeInfo::nil());
