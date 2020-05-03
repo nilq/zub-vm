@@ -188,6 +188,14 @@ impl IrBuilder {
         )
     }
 
+    pub fn ternary(&mut self, cond: ExprNode, then_body: ExprNode, else_body: Option<ExprNode>) -> ExprNode {
+        Expr::If(
+            cond,
+            then_body,
+            else_body
+        ).node(TypeInfo::nil())
+    }
+
     pub fn if_(&mut self, cond: ExprNode, then_build: fn(&mut IrBuilder), else_build: Option<fn(&mut IrBuilder)>) -> ExprNode {
         let mut then_builder = self.new_scope();
     
