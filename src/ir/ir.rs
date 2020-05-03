@@ -27,14 +27,6 @@ pub struct Binding {
 }
 
 impl Binding {
-    pub fn define_global(name: &str) -> Self {
-        Binding {
-            name: name.to_string(),
-            depth: None,
-            function_depth: 0,
-        }
-    }
-
     pub fn define_local(name: &str) -> Self {
         Binding {
             name: name.to_string(),
@@ -144,6 +136,10 @@ impl<T> Node<T> {
         &self.inner
     }
 
+    pub fn inner_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
+
     pub fn type_info(&self) -> &TypeInfo {
         &self.type_info
     }
@@ -184,6 +180,8 @@ pub enum Expr {
     List(Vec<ExprNode>),
     ListGet(ExprNode, ExprNode),
     ListSet(ExprNode, ExprNode, ExprNode),
+
+    Block(Vec<ExprNode>),
 
     Break,
 }

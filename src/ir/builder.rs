@@ -3,97 +3,60 @@ use super::*;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-pub struct IrFunctionBuilder {
-    pub var: Binding,
-    pub params: Vec<Binding>,
-    pub body: Vec<ExprNode>,
-    pub method: bool, // false by default
-}
-
-// This will very likely change in the near future
-// ... a small experimental thing
-impl IrFunctionBuilder {
-    // the build-a-function way
-    pub fn new_local(name: &str, depth: usize, function_depth: usize) -> Self {
-        IrFunctionBuilder {
-            var: Binding::local(name, depth, function_depth),
-            params: Vec::new(),
-            body: Vec::new(),
-            method: false
-        }
-    }
-
-    pub fn new_global(name: &str) -> Self {
-        IrFunctionBuilder {
-            var: Binding::global(name),
-            params: Vec::new(),
-            body: Vec::new(),
-            method: false
-        }
-    }
-
-    pub fn from(var: Binding, params: Vec<Binding>, body: Vec<ExprNode>) -> Self {
-        IrFunctionBuilder {
-            var,
-            params,
-            body,
-            method: false
-        }
-    }
-
-    pub fn params(mut self, params: Vec<Binding>) -> Self {
-        self.params = params;
-        self
-    }
-
-    pub fn body(mut self, body: Vec<ExprNode>) -> Self {
-        self.body = body;
-        self
-    }
-
-    pub fn var(&self) -> &Binding {
-        &self.var
-    }
-
-    pub fn build(self) -> IrFunction {
-        let func_body = IrFunctionBody {
-            params: self.params,
-            method: self.method,
-            inner:  self.body,
-        };
-
-        IrFunction {
-            var: self.var,
-            body: Rc::new(RefCell::new(func_body))
-        }
-    }
-}
-
 pub struct IrBuilder {
-    info: Program,
     program: Vec<ExprNode>,
+    depth: usize,
+    function_depth: usize,
 }
 
 impl IrBuilder {
     pub fn new() -> Self {
         IrBuilder {
-            info: Program::empty(),
             program: Vec::new(),
+            depth: 0,
+            function_depth: 0,
         }
     }
 
-    pub fn with_entry(entry: DataId) -> Self {
+    pub fn new_scope(&self) -> Self {
         IrBuilder {
-            info: Program::with_entry(entry),
             program: Vec::new(),
+            depth: self.depth + 1,
+            function_depth: self.function_depth
         }
+    }
+
+    pub fn new_function_scope(&self) -> Self {
+        IrBuilder {
+            program: Vec::new(),
+            depth: self.depth + 1,
+            function_depth: self.function_depth + 1
+        }
+    }
+
+
+
+    pub fn bind(&mut self, name: &str, rhs: ExprNode) {
+        let bind = if self.depth == 0 && self.function_depth == 0 {
+            Expr::Bind(Binding::global(name), rhs)
+        } else {
+            Expr::Bind(Binding::local(name, self.depth, self.function_depth), rhs)
+        };
+
+        self.emit(bind.node(TypeInfo::nil()));
+    }
+
+    pub fn mutate(&mut self, lhs: ExprNode, rhs: ExprNode) {
+        let mutate = Expr::Mutate(lhs, rhs);
+
+        self.emit(mutate.clone().node(TypeInfo::nil()))
     }
 
     pub fn ret(&mut self, value: Option<ExprNode>) {
         let info = if let Some(ref value) = value {
             value.type_info().clone()
         } else {
-            TypeInfo::none(true)
+            TypeInfo::nil()
         };
 
         self.emit(
@@ -101,7 +64,46 @@ impl IrBuilder {
         )
     }
 
+
+
+    pub fn list(&self, content: Vec<ExprNode>) -> ExprNode {
+        Expr::List(content).node(TypeInfo::nil())
+    }
+
+    pub fn list_get(&self, list: ExprNode, index: ExprNode) -> ExprNode {
+        Expr::ListGet(list, index).node(TypeInfo::nil())
+    }
+
+    pub fn list_set(&self, list: ExprNode, index: ExprNode, value: ExprNode) -> ExprNode {
+        Expr::ListSet(list, index, value).node(TypeInfo::nil())
+    }
+
+
+
+    pub fn var(&self, name: &str) -> ExprNode {
+        let binding = if self.depth == 0 && self.function_depth == 0 {
+            Binding::global(name)
+        } else {
+            Binding::local(name, self.depth, self.function_depth)
+        };
+
+        Expr::Var(
+            binding
+        ).node(
+            TypeInfo::nil()
+        )
+    }
+
     pub fn call(&mut self, callee: ExprNode, args: Vec<ExprNode>, retty: Option<TypeInfo>) -> ExprNode {
+        let mut callee = callee;
+
+        // This is a funny hack to localize functions, as they can't be global, but we still would like to use `var("foo")` in root scope
+        if let Expr::Var(ref mut var) = callee.inner_mut() {
+            if var.depth.is_none() {
+                var.depth = Some(0)
+            }
+        }
+
         let call = Call {
             callee,
             args
@@ -111,88 +113,15 @@ impl IrBuilder {
             if let Some(info) = retty {
                 info
             } else {
-                TypeInfo::none(true)
+                TypeInfo::nil()
             }
         )
     }
 
-    pub fn var(&self, binding: Binding) -> ExprNode {
-        Expr::Var(binding).node(TypeInfo::none(true))
-    }
 
-    pub fn list(&self, content: Vec<ExprNode>) -> ExprNode {
-        Expr::List(content).node(TypeInfo::none(true))
-    }
-
-    pub fn list_get(&self, list: ExprNode, index: ExprNode) -> ExprNode {
-        Expr::ListGet(list, index).node(TypeInfo::none(true))
-    }
-
-    pub fn list_set(&self, list: ExprNode, index: ExprNode, value: ExprNode) -> ExprNode {
-        Expr::ListSet(list, index, value).node(TypeInfo::none(true))
-    }
-
-    pub fn mutate(&mut self, lhs: ExprNode, rhs: ExprNode) -> ExprNode {
-        let mutate = Expr::Mutate(lhs, rhs);
-
-        self.emit(mutate.clone().node(TypeInfo::none(true)));
-
-        mutate.node(TypeInfo::none(true))
-    }
-
-    // Binding to be resolved manually
-    pub fn bind(&mut self, binding: Binding, rhs: ExprNode) -> ExprNode {
-        let bind = Expr::Bind(binding, rhs);
-
-        self.emit(bind.clone().node(TypeInfo::none(true)));
-
-        bind.node(TypeInfo::none(true))
-    }
-
-    pub fn function(&mut self, func: IrFunction) -> ExprNode {
-        let func = Expr::Function(func);
-
-        self.emit(func.clone().node(TypeInfo::none(true)));
-
-        // TODO: do things with type info
-        func.node(TypeInfo::none(true))
-    }
-
-    // Binds a clean local binding, should be resolved after
-    pub fn bind_local(&mut self, name: &str, rhs: ExprNode, depth: usize, function_depth: usize) -> Binding {
-        let binding = Binding::local(name, depth, function_depth);
-
-        self.bind(binding.clone(), rhs);
-
-        binding
-    }
-
-    pub fn if_(&mut self, cond: ExprNode, then: ExprNode, else_body: Option<ExprNode>) -> ExprNode {
-        let if_ = Expr::If(cond, then, else_body).node(TypeInfo::none(true));
-
-        self.emit(if_.clone());
-
-        if_
-    }
-
-    pub fn while_(&mut self, cond: ExprNode, then: ExprNode) -> ExprNode {
-        let while_ = Expr::While(cond, then).node(TypeInfo::none(true));
-
-        self.emit(while_.clone());
-
-        while_
-    }
-
-    pub fn bind_global(&mut self, name: &str, rhs: ExprNode) -> Binding {
-        let binding = Binding::global(name);
-
-        self.emit(Expr::BindGlobal(binding.clone(), rhs).node(TypeInfo::none(true)));
-
-        binding
-    }
 
     pub fn binary(&self, lhs: ExprNode, op: BinaryOp, rhs: ExprNode) -> ExprNode {
-        Expr::Binary(lhs, op, rhs).node(TypeInfo::none(true))
+        Expr::Binary(lhs, op, rhs).node(TypeInfo::nil())
     }
 
     pub fn unary(op: UnaryOp, rhs: ExprNode) -> Expr {
@@ -200,39 +129,103 @@ impl IrBuilder {
     }
 
     pub fn int(&mut self, n: i32) -> ExprNode {
-        let info = TypeInfo::new(Type::Int, true);
+        let info = TypeInfo::new(Type::Int);
         let lit = Literal::Number(n as f64);
 
         Expr::Literal(lit).node(info)
     }
 
     pub fn number(&mut self, n: f64) -> ExprNode {
-        let info = TypeInfo::new(Type::Float, true);
+        let info = TypeInfo::new(Type::Float);
         let lit = Literal::Number(n);
 
         Expr::Literal(lit).node(info)
     }
 
     pub fn string(&mut self, s: &str) -> ExprNode {
-        let info = TypeInfo::new(Type::String, true);
+        let info = TypeInfo::new(Type::String);
         let lit = Literal::String(s.to_owned());
 
         Expr::Literal(lit).node(info)
     }
 
     pub fn bool(&mut self, b: bool) -> ExprNode {
-        let info = TypeInfo::new(Type::Bool, true);
+        let info = TypeInfo::new(Type::Bool);
         let lit = Literal::Boolean(b);
 
         Expr::Literal(lit).node(info)
     }
 
-    pub fn nil(&mut self) -> ExprNode {
-        let info = TypeInfo::new(Type::Nil, true);
-        let lit = Literal::Nil;
 
-        Expr::Literal(lit).node(info)
+
+    pub fn function(&mut self, name: &str, params: &[&str], body_build: fn(&mut IrBuilder)) -> ExprNode {
+        let var = Binding::local(name, self.depth, self.function_depth);
+        
+        let mut body_builder = self.new_function_scope();
+
+        body_build(&mut body_builder);
+
+        let depth = body_builder.depth;
+
+        let body = body_builder.build();
+
+        let func_body = IrFunctionBody {
+            params: params.iter().cloned().map(|x: &str|
+                Binding::local(x, depth, self.function_depth)).collect::<Vec<Binding>>(),
+            method: false,
+            inner: body
+        };
+
+        let ir_func = IrFunction {
+            var,
+            body: Rc::new(RefCell::new(func_body))
+        };
+
+        Expr::Function(
+            ir_func
+        ).node(
+            TypeInfo::nil()
+        )
     }
+
+    pub fn if_(&mut self, cond: ExprNode, then_build: fn(&mut IrBuilder), else_build: Option<fn(&mut IrBuilder)>) -> ExprNode {
+        let mut then_builder = self.new_scope();
+    
+        then_build(&mut then_builder);
+
+        let then_body = Expr::Block(then_builder.build()).node(TypeInfo::nil());
+
+        let else_body = if let Some(else_build) = else_build {
+            let mut else_builder = self.new_scope();
+
+            else_build(&mut else_builder);
+
+            Some(Expr::Block(else_builder.build()).node(TypeInfo::nil()))
+        } else {
+            None
+        };
+
+        Expr::If(
+            cond,
+            then_body,
+            else_body
+        ).node(TypeInfo::nil())
+    }
+
+    pub fn while_(&mut self, cond: ExprNode, then_build: fn(&mut IrBuilder)) -> ExprNode {
+        let mut then_builder = self.new_scope();
+    
+        then_build(&mut then_builder);
+
+        let then_body = Expr::Block(then_builder.build()).node(TypeInfo::nil());
+
+        Expr::While(
+            cond,
+            then_body,
+        ).node(TypeInfo::nil())
+    }
+
+
 
     pub fn build(self) -> Vec<ExprNode> {
         self.program

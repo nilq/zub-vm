@@ -9,21 +9,18 @@ pub enum Type {
 
 #[derive(Clone)]
 pub struct TypeInfo {
-    mutable: bool,
     kind: Option<Type>
 }
 
 impl TypeInfo {
-    pub fn new(kind: Type, mutable: bool) -> Self {
+    pub fn new(kind: Type) -> Self {
         TypeInfo {
-            mutable,
             kind: Some(kind),
         }
     }
 
-    pub fn none(mutable: bool) -> Self {
+    pub fn nil() -> Self {
         TypeInfo {
-            mutable,
             kind: None,
         }
     }

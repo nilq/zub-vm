@@ -384,6 +384,10 @@ impl<'g> Compiler<'g> {
                 self.var_define(var, None)
             },
 
+            Block(ref body) => for node in body {
+                self.compile_expr(node)
+            },
+
             _ => todo!()
         }
     }
