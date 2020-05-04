@@ -40,8 +40,8 @@ vm.exec(&builder.build());
 - [x] Tracing garbage collector
 - [x] High-level IR
 - [x] Compilation of IR
-- [ ] Optimizer
-- [ ] Profiler and disassembler
+- [ ] Optimizer (currently 80-90% Python speed, aiming for much faster)
+- [x] Profiler and disassembler
 
 
 ## Special thanks
