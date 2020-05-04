@@ -412,6 +412,52 @@ impl VM {
     }
 
     #[flame]
+    fn dict(&mut self) {
+        let val = self.allocate(Object::Dict(Dict::empty())).into();
+        self.push(val)
+    }
+
+    #[flame]
+    fn set_dict_element(&mut self) {
+        // corn
+        let dict  = self.pop();
+        let key = HashValue {
+            variant: self.pop().decode().to_hash()
+        };
+
+        let value = self.pop();
+
+        let dict_object = dict
+            .as_object()
+            .map(|o| self.heap.get_mut_unchecked(o));
+
+        if let Some(Object::Dict(ref mut dict)) = dict_object {
+            dict.insert(key, value)
+        }
+    }
+
+    #[flame]
+    fn get_dict_element(&mut self) {
+        // corn
+        let dict  = self.pop();
+        let key = HashValue {
+            variant: self.pop().decode().to_hash()
+        };
+
+        let dict_handle = dict
+            .as_object()
+            .unwrap();
+
+        let dict = self.deref(dict_handle);
+
+        if let Some(value) = dict.as_dict().unwrap().get(&key) {
+            self.push(*value)
+        } else {
+            panic!("no such field `{:?}` on dict", key)
+        }
+    }
+
+    #[flame]
     fn list(&mut self) {
         let element_count = self.read_byte();
 
@@ -426,7 +472,7 @@ impl VM {
     }
 
     #[flame]
-    fn set_element(&mut self) {
+    fn set_list_element(&mut self) {
         let list = self.pop();
         let idx  = if let Variant::Float(ref index) = self.pop().decode() {
             *index as usize
@@ -446,7 +492,7 @@ impl VM {
     }
 
     #[flame]
-    fn get_element(&mut self) {
+    fn get_list_element(&mut self) {
         let list = self.pop();
         let idx  = if let Variant::Float(ref index) = self.pop().decode() {
             *index as usize
@@ -525,6 +571,11 @@ impl VM {
     #[flame]
     fn mul(&mut self) {
         binary_op!(self, *);
+    }
+
+    #[flame]
+    fn rem(&mut self) {
+        binary_op!(self, %);
     }
 
     #[flame]

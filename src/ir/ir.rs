@@ -182,6 +182,10 @@ pub enum Expr {
     ListGet(ExprNode, ExprNode),
     ListSet(ExprNode, ExprNode, ExprNode),
 
+    Dict, // To be made better in the near future
+    DictGet(ExprNode, ExprNode),
+    DictSet(ExprNode, ExprNode, ExprNode),
+
     Block(Vec<ExprNode>),
 
     Break,

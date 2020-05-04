@@ -43,8 +43,14 @@ fn parse_expr(
                 Some(val)
             } else if let Some((binding, args)) = get_binding(ident) {
                 let args = (0..args).map(|_| parse_expr(builder, slice, get_binding)).collect::<Option<_>>()?;
+                
+                let mut inner_binding = binding.clone();
+                inner_binding.depth = Some(binding.depth.unwrap_or(0) + 1);
+
+                println!("{:#?}", inner_binding);
+
                 Some(builder.call(
-                    builder.var(binding),
+                    builder.var(inner_binding),
                     args,
                     None,
                 ))
@@ -81,7 +87,7 @@ fn parse_fn<'a>(
                         Some((Binding::local(ident, 1, 1), 0))
                     } else {
                         get_binding(ident)
-                            .map(|args| (Binding::local(ident, 1, 0), args))
+                            .map(|args| (Binding::local(ident, 1, 1), args))
                     });
 
                     builder.ret(Some(body.unwrap()));
@@ -118,7 +124,7 @@ fn main() {
         fns.push((name, args));
     }
 
-    let main_var = builder.var(Binding::local("main", 1, 0));
+    let main_var = builder.var(Binding::local("main", 0, 0));
     let main_call = builder.call(main_var, vec![], None);
     builder.bind(Binding::global("entry"), main_call);
 

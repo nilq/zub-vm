@@ -54,6 +54,19 @@ impl IrBuilder {
     }
 
 
+    pub fn empty_dict(&self) -> ExprNode {
+        Expr::Dict.node(TypeInfo::nil())
+    }
+
+    pub fn dict_get(&self, dict: ExprNode, index: ExprNode) -> ExprNode {
+        Expr::DictGet(dict, index).node(TypeInfo::nil())
+    }
+
+    pub fn dict_set(&self, dict: ExprNode, index: ExprNode, value: ExprNode) -> ExprNode {
+        Expr::DictSet(dict, index, value).node(TypeInfo::nil())
+    }
+
+
 
     pub fn var(&self, binding: Binding) -> ExprNode {
         Expr::Var(

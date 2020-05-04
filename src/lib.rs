@@ -1,5 +1,6 @@
 extern crate flame;
 #[macro_use] extern crate flamer;
+extern crate im_rc;
 
 pub mod vm;
 pub mod ir;
@@ -144,8 +145,8 @@ mod tests {
         let index = builder.int(0);
         
         let new_element = builder.number(777.0);
-        let set_element = builder.list_set(var.clone(), index.clone(), new_element);
-        builder.emit(set_element);
+        let set_list_element = builder.list_set(var.clone(), index.clone(), new_element);
+        builder.emit(set_list_element);
 
         let right = builder.list_get(var, index);
 
@@ -161,10 +162,19 @@ mod tests {
     fn recursion() {
         let mut builder = IrBuilder::new();
 
+        // This binding is used as the actual binding of the function fib, in the root scope.
+        // The function is defined at a depth of 0, and a function depth of 0.
         let fib_binding = Binding::local("fib", 0, 0);
+
         let fib = builder.function(fib_binding.clone(), &["n"], |builder| {
+           
+            // This is where things get funky. Here we want to access fib from inside its own scope.
+            // Thus it has to be made clear that we're upvalueing fib for this binding.
+            // ... An *upvalue* is made when depth > function_depth
+            // In conclusion, we're accessing fib from a depth of one, whereas fib is at function depth 0, 0
             let upvalue_fib = Binding::local("fib", 1, 0);
 
+            // Here we're simply accessing acessing the parameter n, which will be bound at depth 1 and function_depth 1
             let n = builder.var(
                 Binding::local("n", 1, 1)
             );
@@ -177,7 +187,10 @@ mod tests {
             
             println!("{}", upvalue_fib.is_upvalue());
 
+            // Here we're generating a reference based on the upvalue binding
+            // This is used inside this scope, and will be cloned a couple of times.
             let fib_var = builder.var(upvalue_fib.clone()); // Fine for now, always pointing in the right direction :D
+
             let call_0 = builder.call(fib_var.clone(), vec![binary_0], None);
             let call_1 = builder.call(fib_var, vec![binary_1], None);
 
@@ -191,6 +204,8 @@ mod tests {
             builder.ret(Some(ternary))
         });
 
+        // We don't have to bind fib as this is already done during function compilation.
+        // In the future, anonymous functions will be easier to make. :D
         builder.emit(fib);
 
         let ten = builder.number(10.0);
@@ -211,5 +226,32 @@ mod tests {
         let mut vm = VM::new();
         vm.add_native("print", print_native, 1);
         vm.exec(&builder.build(), true);
+    }
+
+    #[test]
+    fn dict() {
+        let mut builder = IrBuilder::new();
+
+        let fruit = builder.string("fruit");
+        let apple = builder.string("Æble");
+
+        let dict = builder.empty_dict();
+        builder.bind(Binding::local("stuff", 0, 0), dict);
+
+        let var = builder.var(Binding::local("stuff", 0, 0));
+
+        let set_fruit = builder.dict_set(var.clone(), fruit.clone(), apple);
+
+        builder.emit(set_fruit);
+
+
+        let get_fruit = builder.dict_get(var.clone(), fruit);
+
+        builder.bind(Binding::global("test"), get_fruit);
+
+        let mut vm = VM::new();
+        vm.exec(&builder.build(), true);
+
+        println!("{:#?}", vm.globals)
     }
 }

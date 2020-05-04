@@ -233,7 +233,7 @@ impl<'g> Compiler<'g> {
                 let arity = call.args.len();
 
                 if arity > 8 {
-                    panic!("will fix this limitation asap")
+                    panic!("That's a lot of arguments. But I will fix this limitation asap.")
                 }
 
                 self.compile_expr(&call.callee);
@@ -258,7 +258,7 @@ impl<'g> Compiler<'g> {
                 self.compile_expr(index);
                 self.compile_expr(list);
 
-                self.emit(Op::GetElement);
+                self.emit(Op::GetListElement);
             },
 
             ListSet(ref list, ref index, ref value) => {
@@ -266,7 +266,26 @@ impl<'g> Compiler<'g> {
                 self.compile_expr(index);
                 self.compile_expr(list);
 
-                self.emit(Op::SetElement);
+                self.emit(Op::SetListElement);
+            },
+
+            Dict => {
+                self.emit(Op::Dict)
+            },
+
+            DictGet(ref list, ref index) => {
+                self.compile_expr(index);
+                self.compile_expr(list);
+
+                self.emit(Op::GetDictElement);
+            },
+
+            DictSet(ref list, ref index, ref value) => {
+                self.compile_expr(value);
+                self.compile_expr(index);
+                self.compile_expr(list);
+
+                self.emit(Op::SetDictElement);
             },
 
             If(ref cond, ref then, ref els) => {
@@ -511,6 +530,7 @@ impl<'g> Compiler<'g> {
 
     fn resolve_upvalue(&mut self, name: &str) -> u8 {
         let end = self.states.len() - 1;
+        println!("{:#?}", self.state_mut().function.name());
         let (scope, mut index) =
             self.states[..end].iter_mut()
                 .enumerate()
@@ -520,6 +540,7 @@ impl<'g> Compiler<'g> {
                 })
                 .next()
                 .expect("upvalue marked during resolution, but wasn't found");
+
 
         index = self.states[scope + 1].add_upvalue(index, true);
 
