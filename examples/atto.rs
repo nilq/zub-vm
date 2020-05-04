@@ -3,7 +3,7 @@ use zub::{ir::*, vm::*};
 fn parse_expr(
     builder: &mut IrBuilder,
     slice: &mut &[&str],
-    get_binding: &impl Fn(&str) -> Option<usize>,
+    get_binding: &impl Fn(&str) -> Option<(Binding, usize)>,
 ) -> Option<Node<Expr>> {
     match *slice {
         [] => None,
@@ -41,10 +41,10 @@ fn parse_expr(
                 _ => None,
             } {
                 Some(val)
-            } else if let Some(args) = get_binding(ident) {
+            } else if let Some((binding, args)) = get_binding(ident) {
                 let args = (0..args).map(|_| parse_expr(builder, slice, get_binding)).collect::<Option<_>>()?;
                 Some(builder.call(
-                    builder.var(Binding::local(ident, 1, 1)),
+                    builder.var(binding),
                     args,
                     None,
                 ))
@@ -76,11 +76,12 @@ fn parse_fn<'a>(
                 &params,
                 |builder| {
                     let body = parse_expr(builder, slice, &|ident| if ident == *name {
-                        Some(params.len())
+                        Some((Binding::local(ident, 1, 0), params.len()))
                     } else if params.contains(&&ident) {
-                        Some(0)
+                        Some((Binding::local(ident, 1, 1), 0))
                     } else {
                         get_binding(ident)
+                            .map(|args| (Binding::local(ident, 1, 0), args))
                     });
 
                     builder.ret(Some(body.unwrap()));
@@ -117,7 +118,7 @@ fn main() {
         fns.push((name, args));
     }
 
-    let main_var = builder.var(Binding::global("main"));
+    let main_var = builder.var(Binding::local("main", 1, 0));
     let main_call = builder.call(main_var, vec![], None);
     builder.bind(Binding::global("entry"), main_call);
 
@@ -128,6 +129,6 @@ fn main() {
     // println!();
 
     let mut vm = VM::new();
-    vm.exec(&build);
+    vm.exec(&build, false);
     println!("{:?}", vm.globals["entry"]);
 }
