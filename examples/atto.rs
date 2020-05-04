@@ -86,7 +86,7 @@ fn parse_fn<'a>(
                 },
             );
 
-            builder.bind(*name, func);
+            builder.emit(func);
 
             Some((*name, params.len()))
         },
@@ -94,7 +94,7 @@ fn parse_fn<'a>(
     }
 }
 
-const CODE: &str = r#"
+const CODE: &'static str = r#"
 fn sum x is
     if = x 0
         1

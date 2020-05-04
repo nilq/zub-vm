@@ -21,12 +21,13 @@ pub enum Literal {
 // When depth is None, we're dealing with a global.
 #[derive(Clone, Debug)]
 pub struct Binding {
-    name: String,
+    pub name: String,
     pub depth: Option<usize>,
-    function_depth: usize,
+    pub function_depth: usize,
 }
 
 impl Binding {
+    // Define to be resolved later
     pub fn define_local(name: &str) -> Self {
         Binding {
             name: name.to_string(),

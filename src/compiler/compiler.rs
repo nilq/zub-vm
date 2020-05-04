@@ -494,7 +494,7 @@ impl<'g> Compiler<'g> {
     fn start_function(&mut self, method: bool, name: &str, arity: u8, scope: usize) {
         let next_function = FunctionBuilder::new(name, arity);
         let reserved_var = if method { "self" } else { "" };
-        let state = CompileState::new(method, reserved_var, next_function, scope);
+        let mut state = CompileState::new(method, reserved_var, next_function, scope);
 
         self.states.push(state)
     }

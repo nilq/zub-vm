@@ -12,7 +12,7 @@ mod tests {
         let mut builder = IrBuilder::new();
 
         let value = builder.number(42.0);
-        builder.bind("foo", value);
+        builder.bind(Binding::global("foo"), value);
 
         let mut vm = VM::new();
 
@@ -26,9 +26,9 @@ mod tests {
         let mut builder = IrBuilder::new();
 
         let value = builder.number(42.0);
-        builder.bind("foo", value);
+        builder.bind(Binding::local("foo", 0, 0), value);
 
-        builder.bind("FOO", builder.var("foo"));
+        builder.bind(Binding::global("FOO"), builder.var(Binding::local("foo", 0, 0)));
 
         let mut vm = VM::new();
 
@@ -46,7 +46,7 @@ mod tests {
 
         let sum = builder.binary(a, BinaryOp::Add, b);
 
-        builder.bind("sum", sum);
+        builder.bind(Binding::global("sum"), sum);
 
         let mut vm = VM::new();
         vm.exec(&builder.build());
@@ -66,10 +66,10 @@ mod tests {
 
         let mut builder = IrBuilder::new();
         
-        let foo = builder.function("foo", &["a", "b"], |builder| {
+        let foo = builder.function(Binding::local("foo", 0, 0), &["a", "b"], |builder| {
 
-            let a = builder.var("a");
-            let b = builder.var("b");
+            let a = builder.var(Binding::local("a", 1, 1));
+            let b = builder.var(Binding::local("b", 1, 1));
 
             let sum = builder.binary(a, BinaryOp::Add, b);
 
@@ -83,10 +83,10 @@ mod tests {
             builder.number(30.0)
         ];
 
-        let callee = builder.var("foo");
+        let callee = builder.var(Binding::local("foo", 0, 0));
         let call = builder.call(callee, args, None);
 
-        builder.bind("bar", call); // assign "bar" to call here
+        builder.bind(Binding::global("bar"), call); // assign "bar" to call here
 
         let built = builder.build();
 
@@ -104,7 +104,8 @@ mod tests {
             Literal::String("Hello from Rust :D".to_string())
         ).node(TypeInfo::new(Type::String));
         
-        let callee = builder.var("print");
+        let callee = builder.var(Binding::global("print"));
+
         let call = builder.call(callee, vec!(hello), None);
 
         builder.emit(call);
@@ -133,9 +134,9 @@ mod tests {
 
         let list = builder.list(content);
 
-        builder.bind("bob", list);
+        builder.bind(Binding::local("bob", 0, 0), list);
 
-        let var = builder.var("bob");
+        let var = builder.var(Binding::local("bob", 0, 0));
 
         let index = builder.int(0);
         
@@ -145,7 +146,7 @@ mod tests {
 
         let right = builder.list_get(var, index);
 
-        builder.bind("element", right); // expect 777.0
+        builder.bind(Binding::global("element"), right); // expect 777.0
 
         let mut vm = VM::new();
         vm.exec(&builder.build());

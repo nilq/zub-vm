@@ -5,43 +5,18 @@ use std::cell::RefCell;
 
 pub struct IrBuilder {
     program: Vec<ExprNode>,
-    depth: usize,
-    function_depth: usize,
 }
 
 impl IrBuilder {
     pub fn new() -> Self {
         IrBuilder {
             program: Vec::new(),
-            depth: 0,
-            function_depth: 0,
-        }
-    }
-
-    pub fn new_scope(&self) -> Self {
-        IrBuilder {
-            program: Vec::new(),
-            depth: self.depth + 1,
-            function_depth: self.function_depth
-        }
-    }
-
-    pub fn new_function_scope(&self) -> Self {
-        IrBuilder {
-            program: Vec::new(),
-            depth: self.depth + 1,
-            function_depth: self.function_depth + 1
         }
     }
 
 
-
-    pub fn bind(&mut self, name: &str, rhs: ExprNode) {
-        let bind = if self.depth == 0 && self.function_depth == 0 {
-            Expr::Bind(Binding::global(name), rhs)
-        } else {
-            Expr::Bind(Binding::local(name, self.depth, self.function_depth), rhs)
-        };
+    pub fn bind(&mut self, binding: Binding, rhs: ExprNode) {
+        let bind = Expr::Bind(binding, rhs);
 
         self.emit(bind.node(TypeInfo::nil()));
     }
@@ -80,13 +55,7 @@ impl IrBuilder {
 
 
 
-    pub fn var(&self, name: &str) -> ExprNode {
-        let binding = if self.depth == 0 && self.function_depth == 0 {
-            Binding::global(name)
-        } else {
-            Binding::local(name, self.depth, self.function_depth)
-        };
-
+    pub fn var(&self, binding: Binding) -> ExprNode {
         Expr::Var(
             binding
         ).node(
@@ -95,15 +64,6 @@ impl IrBuilder {
     }
 
     pub fn call(&mut self, callee: ExprNode, args: Vec<ExprNode>, retty: Option<TypeInfo>) -> ExprNode {
-        let mut callee = callee;
-
-        // This is a funny hack to localize functions, as they can't be global, but we still would like to use `var("foo")` in root scope
-        if let Expr::Var(ref mut var) = callee.inner_mut() {
-            if var.depth.is_none() {
-                var.depth = Some(0)
-            }
-        }
-
         let call = Call {
             callee,
             args
@@ -158,20 +118,16 @@ impl IrBuilder {
 
 
 
-    pub fn function(&mut self, name: &str, params: &[&str], mut body_build: impl FnMut(&mut IrBuilder)) -> ExprNode {
-        let var = Binding::local(name, self.depth, self.function_depth);
-
-        let mut body_builder = self.new_function_scope();
+    pub fn function(&mut self, var: Binding, params: &[&str], mut body_build: impl FnMut(&mut IrBuilder)) -> ExprNode {
+        let mut body_builder = IrBuilder::new();
 
         body_build(&mut body_builder);
-
-        let depth = body_builder.depth;
 
         let body = body_builder.build();
 
         let func_body = IrFunctionBody {
             params: params.iter().cloned().map(|x: &str|
-                Binding::local(x, depth, self.function_depth)).collect::<Vec<Binding>>(),
+                Binding::local(x, var.depth.unwrap_or(0) + 1, var.function_depth)).collect::<Vec<Binding>>(),
             method: false,
             inner: body
         };
@@ -197,14 +153,14 @@ impl IrBuilder {
     }
 
     pub fn if_(&mut self, cond: ExprNode, then_build: fn(&mut IrBuilder), else_build: Option<fn(&mut IrBuilder)>) -> ExprNode {
-        let mut then_builder = self.new_scope();
+        let mut then_builder = IrBuilder::new();
 
         then_build(&mut then_builder);
 
         let then_body = Expr::Block(then_builder.build()).node(TypeInfo::nil());
 
         let else_body = if let Some(else_build) = else_build {
-            let mut else_builder = self.new_scope();
+            let mut else_builder = IrBuilder::new();
 
             else_build(&mut else_builder);
 
@@ -221,7 +177,7 @@ impl IrBuilder {
     }
 
     pub fn while_(&mut self, cond: ExprNode, then_build: fn(&mut IrBuilder)) -> ExprNode {
-        let mut then_builder = self.new_scope();
+        let mut then_builder = IrBuilder::new();
 
         then_build(&mut then_builder);
 
