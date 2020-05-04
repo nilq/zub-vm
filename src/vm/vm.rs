@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs::File;
 
 use fnv::FnvBuildHasher;
 
@@ -592,12 +593,10 @@ impl VM {
         self.frames.last_mut().expect("frames to be nonempty")
     }
 
-    #[flame]
     fn read_byte(&mut self) -> u8 {
         self.frame_mut().read_byte()
     }
 
-    #[flame]
     fn read_u16(&mut self) -> u16 {
         self.frame_mut().read_u16()
     }

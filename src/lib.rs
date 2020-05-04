@@ -19,7 +19,7 @@ mod tests {
 
         let mut vm = VM::new();
 
-        vm.exec(&builder.build());
+        vm.exec(&builder.build(), true);
 
         println!("{:#?}", vm.globals)
     }
@@ -35,7 +35,7 @@ mod tests {
 
         let mut vm = VM::new();
 
-        vm.exec(&builder.build());
+        vm.exec(&builder.build(), true);
 
         println!("{:#?}", vm.globals)
     }
@@ -52,7 +52,7 @@ mod tests {
         builder.bind(Binding::global("sum"), sum);
 
         let mut vm = VM::new();
-        vm.exec(&builder.build());
+        vm.exec(&builder.build(), true);
 
         println!("{:#?}", vm.globals)
     }
@@ -122,7 +122,7 @@ mod tests {
         let mut vm = VM::new();
 
         vm.add_native("print", print, 1);
-        vm.exec(&builder.build());
+        vm.exec(&builder.build(), true);
     }
 
     #[test]
@@ -152,7 +152,7 @@ mod tests {
         builder.bind(Binding::global("element"), right); // expect 777.0
 
         let mut vm = VM::new();
-        vm.exec(&builder.build());
+        vm.exec(&builder.build(), true);
 
         println!("{:#?}", vm.globals)
     }
@@ -210,6 +210,6 @@ mod tests {
 
         let mut vm = VM::new();
         vm.add_native("print", print_native, 1);
-        vm.exec(&builder.build());
+        vm.exec(&builder.build(), true);
     }
 }
