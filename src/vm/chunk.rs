@@ -204,9 +204,6 @@ pub enum Op {
     GetUpValue,
     SetUpValue,
 
-    GetProperty,
-    SetProperty,
-
     Equal,
     Less,
     Greater,
@@ -215,6 +212,7 @@ pub enum Op {
     Sub,
     Mul,
     Div,
+    Rem,
 
     Not,
     Neg,
@@ -226,15 +224,16 @@ pub enum Op {
     Immediate,
     
     Call(u8),
-    Invoke(u8),
     Closure,
     CloseUpValue,
 
     List,
-    GetElement,
-    SetElement,
+    GetListElement,
+    SetListElement,
 
-    Class(u8),
+    Dict,
+    GetDictElement,
+    SetDictElement,
 }
 
 impl Op {
@@ -272,13 +271,16 @@ impl Op {
             SetUpValue => buf.push(0x23),
             Closure => buf.push(0x24),
             DefineGlobal => buf.push(0x25),
-            Class(idx) => { buf.push(0x26); buf.push(idx); },
-            GetProperty => buf.push(0x27),
-            SetProperty => buf.push(0x28),
-            Invoke(a) => buf.push(0x29 + a),
-            List => buf.push(0x32),
-            GetElement => buf.push(0x33),
-            SetElement => buf.push(0x34)
+
+            List => buf.push(0x26),
+            GetListElement => buf.push(0x27),
+            SetListElement => buf.push(0x28),
+            
+            Rem => buf.push(0x29),
+
+            Dict => buf.push(0x30),
+            GetDictElement => buf.push(0x31),
+            SetDictElement => buf.push(0x32),
         }
     }
 }
@@ -318,14 +320,13 @@ macro_rules! decode_op {
             0x23 => $this.set_upvalue(),
             0x24 => $this.closure(),
             0x25 => $this.define_global(),
-            // TODO:
-                // 0x26 => { let idx = $this.read_byte(); $this.class(idx); }
-                // 0x27 => $this.get_property(),
-                // 0x28 => $this.set_property(),
-                // a @ 0x29..=0x31 => $this.invoke(a - 0x29),
-            0x32 => $this.list(),
-            0x33 => $this.get_element(),
-            0x34 => $this.set_element(),
+            0x26 => $this.list(),
+            0x27 => $this.get_list_element(),
+            0x28 => $this.set_list_element(),
+            0x29 => $this.rem(),
+            0x30 => $this.dict(),
+            0x31 => $this.get_dict_element(),
+            0x32 => $this.set_dict_element(),
             _ => {
                 panic!("Unknown op {}", $op);
             }

@@ -3,7 +3,7 @@ use zub::{ir::*, vm::*};
 fn parse_expr(
     builder: &mut IrBuilder,
     slice: &mut &[&str],
-    get_binding: &impl Fn(&str) -> Option<(usize, Binding)>,
+    get_binding: &impl Fn(&str) -> Option<(Binding, usize)>,
 ) -> Option<Node<Expr>> {
     match *slice {
         [] => None,
@@ -13,7 +13,7 @@ fn parse_expr(
                 let cond = parse_expr(builder, slice, get_binding)?;
                 let a = parse_expr(builder, slice, get_binding)?;
                 let b = parse_expr(builder, slice, get_binding)?;
-                Some(builder.if_(cond, a, Some(b)))
+                Some(builder.ternary(cond, a, Some(b)))
             } else if let Some(op) = match *ident {
                 "+" => Some(BinaryOp::Add),
                 "-" => Some(BinaryOp::Sub),
@@ -37,14 +37,20 @@ fn parse_expr(
             } else if let Some(val) = match *ident {
                 "true" => Some(builder.bool(true)),
                 "false" => Some(builder.bool(false)),
-                "null" => Some(builder.nil()),
+                //"null" => Some(builder.nil()),
                 _ => None,
             } {
                 Some(val)
-            } else if let Some((args, binding)) = get_binding(ident) {
+            } else if let Some((binding, args)) = get_binding(ident) {
                 let args = (0..args).map(|_| parse_expr(builder, slice, get_binding)).collect::<Option<_>>()?;
+                
+                let mut inner_binding = binding.clone();
+                inner_binding.depth = Some(binding.depth.unwrap_or(0) + 1);
+
+                println!("{:#?}", inner_binding);
+
                 Some(builder.call(
-                    builder.var(binding),
+                    builder.var(inner_binding),
                     args,
                     None,
                 ))
@@ -58,42 +64,45 @@ fn parse_expr(
 fn parse_fn<'a>(
     builder: &mut IrBuilder,
     slice: &mut &'a [&'a str],
-    get_binding: &impl Fn(&str) -> Option<(usize, Binding)>,
-) -> Option<(&'a str, usize, IrFunction)> {
+    get_binding: &impl Fn(&str) -> Option<usize>,
+) -> Option<(&'a str, usize)> {
     match *slice {
         [] => None,
         ["fn", name, ..] => {
             let params = slice[2..]
                 .into_iter()
                 .take_while(|token| **token != "is")
-                .map(|param| (param, Binding::define_local(param)))
+                .copied()
                 .collect::<Vec<_>>();
-            *slice = &slice[params.len() + 3..];
-            let mut builder = IrBuilder::new();
 
-            let body = parse_expr(&mut builder, slice, &|ident| if ident == *name {
-                Some((params.len(), Binding::define_global(ident)))
-            } else if let Some((_, binding)) = params.iter().rev().find(|(name, _)| *name == &ident) {
-                Some((0, binding.clone()))
-            } else {
-                get_binding(ident)
-            })?;
+            *slice = &slice[3 + params.len()..];
 
-            let mut weird_test_builder = IrBuilder::new();
-            weird_test_builder.ret(Some(body));
+            let func = builder.function(
+                Binding::local(*name, 0, 0),
+                &params,
+                |builder| {
+                    let body = parse_expr(builder, slice, &|ident| if ident == *name {
+                        Some((Binding::local(ident, 1, 0), params.len()))
+                    } else if params.contains(&&ident) {
+                        Some((Binding::local(ident, 1, 1), 0))
+                    } else {
+                        get_binding(ident)
+                            .map(|args| (Binding::local(ident, 1, 1), args))
+                    });
 
-            let f = IrFunctionBuilder::new_global(*name)
-                .params(params.iter().map(|(_, b)| b).cloned().collect())
-                .body(weird_test_builder.build())
-                .build();
+                    builder.ret(Some(body.unwrap()));
+                },
+            );
 
-            Some((*name, params.len(), f))
+            builder.emit(func);
+
+            Some((*name, params.len()))
         },
         _ => panic!("Not a function: {:?}", slice),
     }
 }
 
-const CODE: &str = r#"
+const CODE: &'static str = r#"
 fn sum x is
     if = x 0
         1
@@ -107,18 +116,17 @@ fn main() {
     let tokens = CODE.split_whitespace().collect::<Vec<_>>();
 
     let mut builder = IrBuilder::new();
-    let mut fns = Vec::<(&str, usize, Binding)>::new();
+    let mut fns = Vec::<(&str, usize)>::new();
     let mut token_slice = &tokens[..];
-    while let Some((name, args, f)) = parse_fn(&mut builder, &mut token_slice, &|ident| {
-        fns.iter().rev().find(|f| f.0 == ident).map(|f| (f.1, f.2.clone()))
+    while let Some((name, args)) = parse_fn(&mut builder, &mut token_slice, &|ident| {
+        fns.iter().rev().find(|f| f.0 == ident).map(|f| f.1)
     }) {
-        builder.function(f);
-        fns.push((name, args, Binding::define_global(name)));
+        fns.push((name, args));
     }
 
-    let main_var = builder.var(Binding::define_global("main"));
+    let main_var = builder.var(Binding::local("main", 0, 0));
     let main_call = builder.call(main_var, vec![], None);
-    builder.bind_global("entry", main_call);
+    builder.bind(Binding::global("entry"), main_call);
 
     let build = builder.build();
 
@@ -127,6 +135,6 @@ fn main() {
     // println!();
 
     let mut vm = VM::new();
-    vm.exec(&build);
+    vm.exec(&build, false);
     println!("{:?}", vm.globals["entry"]);
 }

@@ -2,10 +2,24 @@ use super::super::gc::{ *, tag::*, trace::* };
 use super::*;
 
 use std::fmt::{Debug, Display};
+use std::mem;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Value {
     handle: TaggedHandle<Object>,
+}
+
+#[derive(Hash, Clone, PartialEq, Eq, Debug)]
+pub enum HashVariant {
+    Bool(bool),
+    Int(i64),
+    Obj(Handle<Object>),
+    Nil,
+}
+
+#[derive(Hash, Clone, PartialEq, Eq, Debug)]
+pub struct HashValue {
+    pub variant: HashVariant
 }
 
 #[derive(Debug, Clone)]
@@ -15,6 +29,29 @@ pub enum Variant {
     False,
     Nil,
     Obj(Handle<Object>),
+}
+
+impl Variant {
+    pub fn to_hash(&self) -> HashVariant {
+        use self::Variant::*;
+
+        match *self {
+            Float(ref f) => {
+                unsafe {
+                    HashVariant::Int(
+                        mem::transmute::<f64, i64>(*f)
+                    )
+                }
+            },
+
+            True  => HashVariant::Bool(true),
+            False => HashVariant::Bool(false),
+
+            Obj(ref n) => HashVariant::Obj(*n),
+
+            Nil => HashVariant::Nil,
+        }
+    }
 }
 
 const TAG_TRUE:  u8 = 0x01;

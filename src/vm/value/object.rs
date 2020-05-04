@@ -5,6 +5,8 @@ use std::fmt::{Debug, Display};
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use im_rc::hashmap::HashMap;
+
 // lol nice
 macro_rules! impl_as (
     ($name:ident, $typ:ident) => {
@@ -24,6 +26,7 @@ pub enum Object {
     NativeFunction(NativeFunction),
     Closure(Closure),
     List(List),
+    Dict(Dict)
 }
 
 impl Object {
@@ -31,7 +34,7 @@ impl Object {
     impl_as!(as_closure, Closure);
     impl_as!(as_function, Function);
     impl_as!(as_list, List);
-
+    impl_as!(as_dict, Dict);
 
     pub fn native_fn(name: &str, arity: u8, function: fn(&Heap<Object>, &[Value]) -> Value) -> Self {
         Object::NativeFunction(
@@ -61,7 +64,8 @@ impl Trace<Self> for Object {
             Function(f) => f.trace(tracer),
             NativeFunction(_) => {},
             Closure(c) => c.trace(tracer),
-            List(l) => l.trace(tracer)
+            List(l) => l.trace(tracer),
+            Dict(d) => d.trace(tracer)
         }
     }
 }
@@ -75,7 +79,8 @@ impl Debug for Object {
             NativeFunction(ref na) => write!(f, "<native fn {:?}>", na.name),
             Function(ref fun) => write!(f, "<fn {:?}>", fun.name),
             Closure(ref cl) => write!(f, "<closure {:?}>", cl.function),
-            List(ref ls) => write!(f, "<list [{:?}]>", ls.content.len())
+            List(ref ls) => write!(f, "<list [{:?}]>", ls.content.len()),
+            Dict(ref dict) => write!(f, "<dict [{:?}]>", dict.content.len()),
         }
     }
 }
@@ -89,7 +94,8 @@ impl<'h, 'a> Display for WithHeap<'h, &'a Object> {
             NativeFunction(ref na) => write!(f, "<native fn {}>", na.name),
             Function(ref fun) => write!(f, "<fn {}>", fun.name),
             Closure(ref cl) => write!(f, "<fn {}>", cl.function.name),
-            List(ref ls) => write!(f, "<list [{}]>", ls.content.len())
+            List(ref ls) => write!(f, "<list [{}]>", ls.content.len()),
+            Dict(ref ls) => write!(f, "<dict [{}]>", ls.content.len()),
         }
     }
 }
@@ -204,6 +210,40 @@ impl UpValue {
         *inner = Ok(value);
 
         Ok(())
+    }
+}
+
+pub struct Dict {
+    content: HashMap<HashValue, Value>,
+}
+
+impl Dict {
+    #[inline]
+    pub fn new(content: HashMap<HashValue, Value>) -> Self {
+        Dict {
+            content,
+        }
+    }
+
+    #[inline]
+    pub fn empty() -> Self {
+        Dict {
+            content: HashMap::new()
+        }
+    }
+
+    pub fn insert(&mut self, key: HashValue, value: Value) {
+        self.content.insert(key, value);
+    }
+
+    pub fn get(&self, key: &HashValue) -> Option<&Value> {
+        self.content.get(key)
+    }
+}
+
+impl Trace<Object> for Dict {
+    fn trace(&self, tracer: &mut Tracer<Object>) {
+        self.content.values().for_each(|v| v.trace(tracer));
     }
 }
 
