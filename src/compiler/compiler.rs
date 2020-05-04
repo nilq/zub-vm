@@ -366,6 +366,7 @@ impl<'g> Compiler<'g> {
                         match op {
                             Add => self.emit(Op::Add),
                             Sub => self.emit(Op::Sub),
+                            Rem => self.emit(Op::Rem),
                             Mul => self.emit(Op::Mul),
                             Div => self.emit(Op::Div),
 

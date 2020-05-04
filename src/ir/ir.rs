@@ -84,6 +84,7 @@ pub enum BinaryOp {
     Sub,
     Mul,
     Div,
+    Rem,
     Equal,
     NEqual,
     GtEqual,
