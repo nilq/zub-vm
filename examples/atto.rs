@@ -44,7 +44,7 @@ fn parse_expr(
             } else if let Some(args) = get_binding(ident) {
                 let args = (0..args).map(|_| parse_expr(builder, slice, get_binding)).collect::<Option<_>>()?;
                 Some(builder.call(
-                    builder.var(ident),
+                    builder.var(Binding::local(ident, 1, 1)),
                     args,
                     None,
                 ))
@@ -68,10 +68,11 @@ fn parse_fn<'a>(
                 .take_while(|token| **token != "is")
                 .copied()
                 .collect::<Vec<_>>();
+
             *slice = &slice[3 + params.len()..];
 
             let func = builder.function(
-                *name,
+                Binding::local(*name, 0, 0),
                 &params,
                 |builder| {
                     let body = parse_expr(builder, slice, &|ident| if ident == *name {
@@ -116,9 +117,9 @@ fn main() {
         fns.push((name, args));
     }
 
-    let main_var = builder.var("main");
+    let main_var = builder.var(Binding::global("main"));
     let main_call = builder.call(main_var, vec![], None);
-    builder.bind("entry", main_call);
+    builder.bind(Binding::global("entry"), main_call);
 
     let build = builder.build();
 

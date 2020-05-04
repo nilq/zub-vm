@@ -127,7 +127,7 @@ impl IrBuilder {
 
         let func_body = IrFunctionBody {
             params: params.iter().cloned().map(|x: &str|
-                Binding::local(x, var.depth.unwrap_or(0) + 1, var.function_depth)).collect::<Vec<Binding>>(),
+                Binding::local(x, var.depth.unwrap_or(0) + 1, var.function_depth + 1)).collect::<Vec<Binding>>(),
             method: false,
             inner: body
         };

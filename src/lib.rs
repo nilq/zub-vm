@@ -1,3 +1,6 @@
+extern crate flame;
+#[macro_use] extern crate flamer;
+
 pub mod vm;
 pub mod ir;
 pub mod compiler;
@@ -91,7 +94,7 @@ mod tests {
         let built = builder.build();
 
         let mut vm = VM::new();
-        vm.exec(&built);
+        vm.exec(&built, true);
 
         println!("{:#?}", vm.globals)
     }
@@ -152,5 +155,61 @@ mod tests {
         vm.exec(&builder.build());
 
         println!("{:#?}", vm.globals)
+    }
+
+    #[test]
+    fn recursion() {
+        let mut builder = IrBuilder::new();
+
+        let fib_binding = Binding::local("fib", 0, 0);
+        let fib = builder.function(fib_binding.clone(), &["n"], |builder| {
+            let upvalue_fib = Binding::local("fib", 1, 0);
+
+            let n = builder.var(
+                Binding::local("n", 1, 1)
+            );
+
+            let one = builder.number(1.0);
+            let two = builder.number(2.0);
+
+            let binary_0 = builder.binary(n.clone(), BinaryOp::Sub, one);
+            let binary_1 = builder.binary(n.clone(), BinaryOp::Sub, two);
+            
+            println!("{}", upvalue_fib.is_upvalue());
+
+            let fib_var = builder.var(upvalue_fib.clone()); // Fine for now, always pointing in the right direction :D
+            let call_0 = builder.call(fib_var.clone(), vec![binary_0], None);
+            let call_1 = builder.call(fib_var, vec![binary_1], None);
+
+
+            let final_binary = builder.binary(call_0, BinaryOp::Add, call_1);
+
+            let three = builder.number(3.0);
+            let n_less_than_3 = builder.binary(n.clone(), BinaryOp::LtEqual, three);
+            let ternary = builder.ternary(n_less_than_3, n.clone(), Some(final_binary));
+
+            builder.ret(Some(ternary))
+        });
+
+        builder.emit(fib);
+
+        let ten = builder.number(10.0);
+        let fib_var = builder.var(fib_binding);
+
+        let fib_call = builder.call(fib_var, vec![ten], None);
+
+        let print = builder.var(Binding::global("print"));
+        let call  = builder.call(print, vec!(fib_call), None);
+
+        builder.emit(call); // :D
+
+        fn print_native(heap: &Heap<Object>, args: &[Value]) -> Value {
+            println!("{}", args[1].with_heap(heap));
+            Value::nil()
+        }
+
+        let mut vm = VM::new();
+        vm.add_native("print", print_native, 1);
+        vm.exec(&builder.build());
     }
 }

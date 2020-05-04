@@ -2,6 +2,9 @@ use std::collections::HashMap;
 
 use fnv::FnvBuildHasher;
 
+use flame as f;
+use flamer::flame;
+
 use super::*;
 
 use std::mem;
@@ -105,14 +108,16 @@ impl VM {
         }
     }
 
-    pub fn exec(&mut self, atoms: &[ExprNode]) {
+    pub fn exec(&mut self, atoms: &[ExprNode], debug: bool) {
         let function = {
             let compiler = Compiler::new(&mut self.heap);
             compiler.compile(atoms)
         };
 
-        // let dis = Disassembler::new(function.chunk(), &self.heap);
-        // dis.disassemble();
+        if debug {
+            let dis = Disassembler::new(function.chunk(), &self.heap);
+            dis.disassemble();
+        }
 
         let closure = Closure::new(function, Vec::new());
         let value = self.allocate(Object::Closure(closure)).into();
@@ -120,7 +125,11 @@ impl VM {
         self.push(value);
         self.call(0);
 
-        self.run()
+        self.run();
+
+        if debug {
+            f::dump_html(File::create("flamegraph.html").unwrap()).unwrap();
+        }
     }
 
     pub fn add_native(&mut self, name: &str, func: fn(&Heap<Object>, &[Value]) -> Value, arity: u8) {
@@ -138,7 +147,7 @@ impl VM {
         }
     }
 
-    #[inline]
+    #[flame]
     fn call_closure(&mut self, handle: Handle<Object>, arity: u8) {
         let closure = self.deref(handle)
             .as_closure()
@@ -155,7 +164,7 @@ impl VM {
         self.frames.push(frame);
     }
 
-    #[inline]
+    #[flame]
     fn closure(&mut self) {
         let value = self.frame_mut().read_constant();
         let function = value.as_object()
@@ -184,7 +193,7 @@ impl VM {
         self.push(value)
     }
 
-    #[inline]
+    #[flame]
     fn call(&mut self, arity: u8) {
         // TODO: MAKE OPTION FOR INLINING HERE!
 
@@ -215,7 +224,7 @@ impl VM {
         }
     }
 
-    #[inline]
+    #[flame]
     fn ret(&mut self) {
         if let Some(frame) = self.frames.pop() {
             let return_value = self.pop();
@@ -231,7 +240,7 @@ impl VM {
         }
     }
 
-    #[inline]
+    #[flame]
     fn capture_upvalue(&mut self, idx: usize) -> UpValue {
         let offset = self.frame().stack_start + idx;
 
@@ -254,7 +263,7 @@ impl VM {
             .expect("valid closure")
     }
 
-    #[inline]
+    #[flame]
     fn set_upvalue(&mut self) {
         let value = self.peek();
         let idx = self.frame_mut().read_byte();
@@ -266,7 +275,7 @@ impl VM {
         }
     }
 
-    #[inline]
+    #[flame]
     fn get_upvalue(&mut self) {
         let idx = self.frame_mut().read_byte();
         let value = self.current_closure()
@@ -277,7 +286,7 @@ impl VM {
         self.push(value)
     }
 
-    #[inline]
+    #[flame]
     fn close_upvalue(&mut self) {
         let end = self.stack.len() - 1;
 
@@ -285,7 +294,7 @@ impl VM {
         self.pop();
     }
 
-    #[inline]
+    #[flame]
     fn close_upvalues(&mut self, stack_end: usize) {
         let mut open_upvalues = Vec::new();
 
@@ -300,7 +309,7 @@ impl VM {
         }
     }
 
-    #[inline]
+    #[flame]
     fn allocate(&mut self, object: Object) -> Handle<Object> {
         let handle = self.heap.insert(object).into_handle();
 
@@ -330,13 +339,13 @@ impl VM {
         self.push(val)
     }
 
-    #[inline]
+    #[flame]
     fn print(&mut self) {
         let value = self.pop();
         println!("{}", value.with_heap(&self.heap))
     }
 
-    #[inline]
+    #[flame]
     fn add(&mut self) {
         let a = self.pop();
         let b = self.pop();
@@ -349,7 +358,7 @@ impl VM {
         }
     }
 
-    #[inline]
+    #[flame]
     fn get_global(&mut self) {
         let global = self.frame_mut()
             .read_constant()
@@ -365,7 +374,7 @@ impl VM {
         }
     }
 
-    #[inline]
+    #[flame]
     fn define_global(&mut self) {
         let var = self.frame_mut().read_constant()
             .as_object()
@@ -379,7 +388,7 @@ impl VM {
         self.globals.insert(var, lhs);
     }
 
-    #[inline]
+    #[flame]
     fn set_global(&mut self) {
         let handle = self.frame_mut().read_constant()
             .as_object()
@@ -401,7 +410,7 @@ impl VM {
         }
     }
 
-    #[inline]
+    #[flame]
     fn list(&mut self) {
         let element_count = self.read_byte();
 
@@ -415,7 +424,7 @@ impl VM {
         self.push(val)
     }
 
-    #[inline]
+    #[flame]
     fn set_element(&mut self) {
         let list = self.pop();
         let idx  = if let Variant::Float(ref index) = self.pop().decode() {
@@ -435,7 +444,7 @@ impl VM {
         }
     }
 
-    #[inline]
+    #[flame]
     fn get_element(&mut self) {
         let list = self.pop();
         let idx  = if let Variant::Float(ref index) = self.pop().decode() {
@@ -507,29 +516,29 @@ impl VM {
         self.push(Value::falselit());
     }
 
-    #[inline]
+    #[flame]
     fn sub(&mut self) {
         binary_op!(self, -);
     }
 
-    #[inline]
+    #[flame]
     fn mul(&mut self) {
         binary_op!(self, *);
     }
 
-    #[inline]
+    #[flame]
     fn div(&mut self) {
         binary_op!(self, /);
     }
 
-    #[inline]
+    #[flame]
     fn neg(&mut self) {
         if let Variant::Float(a) = self.pop().decode() {
             self.push((-a).into());
         }
     }
 
-    #[inline]
+    #[flame]
     fn not(&mut self) {
         let a = self.pop();
 
@@ -542,27 +551,27 @@ impl VM {
         )
     }
 
-    #[inline]
+    #[flame]
     fn eq(&mut self) {
         binary_op!(self, ==);
     }
 
-    #[inline]
+    #[flame]
     fn gt(&mut self) {
         binary_op!(self, >);
     }
 
-    #[inline]
+    #[flame]
     fn lt(&mut self) {
         binary_op!(self, <);
     }
 
-    #[inline]
+    #[flame]
     fn jmp(&mut self) {
         self.frame_mut().ip = self.read_u16() as usize
     }
 
-    #[inline]
+    #[flame]
     fn jze(&mut self) {
         let ip = self.read_u16();
         if !self.peek().truthy() {
@@ -570,7 +579,7 @@ impl VM {
         }
     }
 
-    #[inline]
+    #[flame]
     fn op_loop(&mut self) {
         self.frame_mut().ip -= self.read_u16() as usize
     }
@@ -583,12 +592,12 @@ impl VM {
         self.frames.last_mut().expect("frames to be nonempty")
     }
 
-    #[inline]
+    #[flame]
     fn read_byte(&mut self) -> u8 {
         self.frame_mut().read_byte()
     }
 
-    #[inline]
+    #[flame]
     fn read_u16(&mut self) -> u16 {
         self.frame_mut().read_u16()
     }
@@ -601,22 +610,22 @@ impl VM {
         self.stack.push(value);
     }
 
-    #[inline]
+    #[flame]
     fn pop(&mut self) -> Value {
         self.stack.pop().expect("stack to be nonempty")
     }
 
-    #[inline]
+    #[flame]
     fn peek(&mut self) -> Value {
         *self.stack.last().expect("stack to be nonempty")
     }
 
-    #[inline]
+    #[flame]
     fn deref(&self, o: Handle<Object>) -> &Object {
         unsafe { self.heap.get_unchecked(o) }
     }
 
-    #[inline]
+    #[flame]
     fn deref_mut(&mut self, o: Handle<Object>) -> &mut Object {
         self.heap.get_mut_unchecked(o)
     }

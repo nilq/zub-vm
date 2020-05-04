@@ -86,7 +86,7 @@ impl CompileState {
             }
         }
 
-        panic!("TODO: unresolved var: {}", var)
+        panic!("TODO: unresolved var: {} in {:#?}", var, self.locals)
     }
 
     fn add_upvalue(&mut self, index: u8, is_local: bool) -> u8 {
@@ -224,8 +224,9 @@ impl<'g> Compiler<'g> {
             Return(val) => self.emit_return((*val).clone()),
 
             Function(ref ir_func) => {
+                self.var_define(&ir_func.var, None);
+
                 self.function_decl(ir_func);
-                self.var_define(&ir_func.var, None)
             },
 
             Call(ref call) => {
@@ -469,7 +470,7 @@ impl<'g> Compiler<'g> {
 
         let upvalues = self.state_mut().upvalues.clone();
 
-        let function = self.end_function();
+        let function = self.end_function(); // Might delete later, felt cute
         let handle = self.heap.insert(Object::Function(function)).into_handle();
 
         let value = Value::object(handle);

@@ -29,6 +29,8 @@ impl<'c> Disassembler<'c> {
         while self.offset < bytes.len() {
             self.disassemble_instruction();
         }
+
+        println!();
     }
 
     fn disassemble_instruction(&mut self) {
@@ -192,13 +194,8 @@ impl<'c> Disassembler<'c> {
         println!();
 
         for _ in 0..count {
-            let is_local = self.read_byte() > 0;
-            let index = self.read_byte();
-            if is_local {
-                print!("L{}", index);
-            } else {
-                print!("U{}", index);
-            }
+            let _is_local = self.read_byte() > 0;
+            let _index = self.read_byte();
         }
         eprintln!();
     }
