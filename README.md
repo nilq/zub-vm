@@ -48,3 +48,4 @@ vm.exec(&builder.build());
 
 - [zesterer](https://github.com/zesterer)
 - [cwbriones](https://github.com/cwbriones)
+- [evolbug](https://github.com/evolbug)
