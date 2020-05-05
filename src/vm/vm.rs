@@ -492,13 +492,9 @@ impl VM {
     }
 
     #[flame]
-    fn get_list_element(&mut self) {
+    fn index(&mut self) {
         let list = self.pop();
-        let idx  = if let Variant::Float(ref index) = self.pop().decode() {
-            *index as usize
-        } else {
-            panic!("Can't index list with non-number")
-        };
+        let index = self.pop();
 
         let list_handle = list
             .as_object()
@@ -506,9 +502,31 @@ impl VM {
 
         let list = self.deref(list_handle);
 
-        let element = list.as_list().unwrap().get(idx as usize);
+        if let Some(list) = list.as_list() {
+            let idx = if let Variant::Float(ref index) = index.decode() {
+                *index as usize
+            } else {
+                panic!("Can't index list with non-number")
+            };
+    
+            let element = list.get(idx as usize);
+    
+            self.push(element);
 
-        self.push(element)
+            return
+        }
+
+        if let Some(dict) = list.as_dict() {
+            let key = HashValue {
+                variant: index.decode().to_hash()
+            };
+
+            if let Some(value) = dict.get(&key) {
+                self.push(*value)
+            } else {
+                panic!("no such field `{:?}` on dict", key)
+            }
+        }
     }
 
     fn runtime_error(&self, err: &str) {

@@ -255,13 +255,6 @@ impl<'g> Compiler<'g> {
                 self.emit_byte(content.len() as u8)
             },
 
-            ListGet(ref list, ref index) => {
-                self.compile_expr(index);
-                self.compile_expr(list);
-
-                self.emit(Op::GetListElement);
-            },
-
             ListSet(ref list, ref index, ref value) => {
                 self.compile_expr(value);
                 self.compile_expr(index);
@@ -272,13 +265,6 @@ impl<'g> Compiler<'g> {
 
             Dict => {
                 self.emit(Op::Dict)
-            },
-
-            DictGet(ref list, ref index) => {
-                self.compile_expr(index);
-                self.compile_expr(list);
-
-                self.emit(Op::GetDictElement);
             },
 
             DictSet(ref list, ref index, ref value) => {
@@ -357,6 +343,13 @@ impl<'g> Compiler<'g> {
 
                         self.patch_jmp(end_jmp)
                     },
+
+                    Index => {
+                        self.compile_expr(rhs);
+                        self.compile_expr(lhs);
+        
+                        self.emit(Op::Index);
+                    }
 
                     _ => {
                         // This looks kinda funny, but it's an ok way of matching I guess

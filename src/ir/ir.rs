@@ -89,6 +89,7 @@ pub enum BinaryOp {
     NEqual,
     GtEqual,
     LtEqual,
+    Index,
     Gt,
     Lt,
     And,
@@ -180,11 +181,9 @@ pub enum Expr {
     While(ExprNode, ExprNode),
 
     List(Vec<ExprNode>),
-    ListGet(ExprNode, ExprNode),
     ListSet(ExprNode, ExprNode, ExprNode),
 
     Dict, // To be made better in the near future
-    DictGet(ExprNode, ExprNode),
     DictSet(ExprNode, ExprNode, ExprNode),
 
     Block(Vec<ExprNode>),

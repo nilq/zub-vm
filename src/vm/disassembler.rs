@@ -70,14 +70,13 @@ impl<'c> Disassembler<'c> {
         eprint!("LIST")
     }
 
-    fn get_list_element(&mut self) {}
+    fn index(&mut self) {}
     fn set_list_element(&mut self) {}
 
     fn dict(&self) {
         eprint!("DICT")
     }
 
-    fn get_dict_element(&mut self) {}
     fn set_dict_element(&mut self) {}
 
 

@@ -148,7 +148,7 @@ mod tests {
         let set_list_element = builder.list_set(var.clone(), index.clone(), new_element);
         builder.emit(set_list_element);
 
-        let right = builder.list_get(var, index);
+        let right = builder.binary(var, BinaryOp::Index, index);
 
         builder.bind(Binding::global("element"), right); // expect 777.0
 
@@ -244,8 +244,7 @@ mod tests {
 
         builder.emit(set_fruit);
 
-
-        let get_fruit = builder.dict_get(var.clone(), fruit);
+        let get_fruit = builder.binary(var.clone(), BinaryOp::Index, fruit);
 
         builder.bind(Binding::global("test"), get_fruit);
 
