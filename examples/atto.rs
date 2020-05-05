@@ -43,11 +43,19 @@ fn parse_expr(
                 Some(val)
             } else if let Some((binding, args)) = get_binding(ident) {
                 let args = (0..args).map(|_| parse_expr(builder, slice, get_binding)).collect::<Option<_>>()?;
-                
-                let mut inner_binding = binding.clone();
-                inner_binding.depth = Some(binding.depth.unwrap_or(0) + 1);
 
-                println!("{:#?}", inner_binding);
+                let mut inner_binding = binding.clone();
+
+                if inner_binding.depth == Some(0) {
+                    inner_binding.depth = Some(binding.depth.unwrap_or(0) + 1);
+                } else if inner_binding.name() == "sum" {
+                    
+                    inner_binding.function_depth = 0; // Atto needs to be able to tell where the variable we're referencing is. If the depth and function depth is equal, we're in the same scope as the variable.
+                    // This specifically shouldn't be the case for upvalues. `sum` should be @ depth 1, func_depth 1
+                    // For the parameter `x` is at depth 1, func_depth 1
+                    // So just to make it work right now ...
+                    //      if sum { let's go with upvalue ... limiting param names for now }
+                }
 
                 Some(builder.call(
                     builder.var(inner_binding),
@@ -118,6 +126,7 @@ fn main() {
     let mut builder = IrBuilder::new();
     let mut fns = Vec::<(&str, usize)>::new();
     let mut token_slice = &tokens[..];
+
     while let Some((name, args)) = parse_fn(&mut builder, &mut token_slice, &|ident| {
         fns.iter().rev().find(|f| f.0 == ident).map(|f| f.1)
     }) {
@@ -126,15 +135,13 @@ fn main() {
 
     let main_var = builder.var(Binding::local("main", 0, 0));
     let main_call = builder.call(main_var, vec![], None);
+
     builder.bind(Binding::global("entry"), main_call);
 
     let build = builder.build();
 
-    // println!("{:#?}", build);
-    // println!();
-    // println!();
-
     let mut vm = VM::new();
+
     vm.exec(&build, false);
     println!("{:?}", vm.globals["entry"]);
 }
