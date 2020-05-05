@@ -531,7 +531,7 @@ impl<'g> Compiler<'g> {
 
     fn resolve_upvalue(&mut self, name: &str) -> u8 {
         let end = self.states.len() - 1;
-        println!("{:#?}", self.state_mut().function.name());
+
         let (scope, mut index) =
             self.states[..end].iter_mut()
                 .enumerate()
