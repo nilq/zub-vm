@@ -76,7 +76,7 @@ impl IrBuilder {
         )
     }
 
-    pub fn call(&mut self, callee: ExprNode, args: Vec<ExprNode>, retty: Option<TypeInfo>) -> ExprNode {
+    pub fn call(&self, callee: ExprNode, args: Vec<ExprNode>, retty: Option<TypeInfo>) -> ExprNode {
         let call = Call {
             callee,
             args
@@ -101,28 +101,28 @@ impl IrBuilder {
         Expr::Unary(op, rhs)
     }
 
-    pub fn int(&mut self, n: i32) -> ExprNode {
+    pub fn int(&self, n: i32) -> ExprNode {
         let info = TypeInfo::new(Type::Int);
         let lit = Literal::Number(n as f64);
 
         Expr::Literal(lit).node(info)
     }
 
-    pub fn number(&mut self, n: f64) -> ExprNode {
+    pub fn number(&self, n: f64) -> ExprNode {
         let info = TypeInfo::new(Type::Float);
         let lit = Literal::Number(n);
 
         Expr::Literal(lit).node(info)
     }
 
-    pub fn string(&mut self, s: &str) -> ExprNode {
+    pub fn string(&self, s: &str) -> ExprNode {
         let info = TypeInfo::new(Type::String);
         let lit = Literal::String(s.to_owned());
 
         Expr::Literal(lit).node(info)
     }
 
-    pub fn bool(&mut self, b: bool) -> ExprNode {
+    pub fn bool(&self, b: bool) -> ExprNode {
         let info = TypeInfo::new(Type::Bool);
         let lit = Literal::Boolean(b);
 
