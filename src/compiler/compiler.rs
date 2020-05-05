@@ -175,6 +175,7 @@ impl<'g> Compiler<'g> {
             self.compile_expr(expr)
         }
 
+        self.emit_return(None);
         self.end_function()
     }
 
@@ -521,7 +522,7 @@ impl<'g> Compiler<'g> {
     }
 
     fn end_function(&mut self) -> Function {
-        self.emit_return(None);
+        // self.emit_return(None);
 
         let mut state = self.states.pop().expect("can't have empty state");
 

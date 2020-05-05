@@ -133,8 +133,8 @@ impl<'c> Disassembler<'c> {
         let b6 = self.chunk.get(self.offset - 3) as u64;
         let b7 = self.chunk.get(self.offset - 2) as u64;
         let b8 = self.chunk.get(self.offset - 1) as u64;
-        let raw = b1 +
-            (b2 << 8) +
+        let raw = b1   +
+            (b2 << 8)  +
             (b3 << 16) +
             (b4 << 24) +
             (b5 << 32) +
@@ -202,14 +202,10 @@ impl<'c> Disassembler<'c> {
             }
         }
 
-        println!();
-        println!();
-
         for _ in 0..count {
             let _is_local = self.read_byte() > 0;
             let _index = self.read_byte();
         }
-        eprintln!();
     }
 
     fn class(&mut self, idx: u8) {

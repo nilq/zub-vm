@@ -13,3 +13,6 @@ colored = "1.9.3"
 flame = "0.2.2"
 flamer = "0.3"
 im-rc = "14.3.0"
+
+[dev-dependencies]
+logos = "*"
