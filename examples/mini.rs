@@ -6,7 +6,6 @@ use logos::Logos;
 
 use std::collections::HashMap;
 
-
 #[derive(Logos, Debug, PartialEq, Clone)]
 enum Token<'t> {
     #[regex("[0-9.]+")]
@@ -60,6 +59,25 @@ enum Token<'t> {
     Error,
 }
 
+impl<'t> Token<'t> {
+    fn to_op(&self) -> Option<Op> {
+        use self::Token::*;
+
+        Some(
+            match *self {
+                Add => Op::Add,
+                Sub => Op::Sub,
+                Mul => Op::Mul,
+                Div => Op::Div,
+                Rem => Op::Rem,
+                Period => Op::Index,
+
+                _ => return None
+            }
+        )
+    }
+}
+
 #[derive(Debug, Clone)]
 enum Op {
     Add,
@@ -67,6 +85,7 @@ enum Op {
     Mul,
     Div,
     Rem,
+    Index,
 }
 
 impl Op {
@@ -79,6 +98,20 @@ impl Op {
             Mul => 1,
             Div => 1,
             Rem => 1,
+            Index => 4,
+        }
+    }
+
+    pub fn to_ir(&self) -> BinaryOp {
+        use self::Op::*;
+
+        match self {
+            Add => BinaryOp::Add,
+            Sub => BinaryOp::Sub,
+            Mul => BinaryOp::Mul,
+            Div => BinaryOp::Div,
+            Rem => BinaryOp::Rem,
+            Index => BinaryOp::Index,
         }
     }
 }
@@ -116,6 +149,8 @@ struct Parser<'p> {
     depth_table: HashMap<String, Binding>,
     depth: usize,
     function_depth: usize,
+
+    in_operation: bool,
 }
 
 impl<'p> Parser<'p> {
@@ -128,6 +163,8 @@ impl<'p> Parser<'p> {
             depth_table: HashMap::new(),
             depth: 0,
             function_depth: 0,
+
+            in_operation: false
         }
     }
 
@@ -158,7 +195,6 @@ impl<'p> Parser<'p> {
                     self.next();
 
                     let right = self.parse_expression().unwrap();
-                    self.next();
 
                     self.depth_table.insert(name.clone(), Binding::global(name.as_str()));
 
@@ -184,7 +220,6 @@ impl<'p> Parser<'p> {
                     self.next();
 
                     let right = self.parse_expression().unwrap();
-                    self.next();
 
                     let binding = Binding::local(name.as_str(), self.depth, self.function_depth);
                     self.depth_table.insert(name.clone(), binding.clone());
@@ -268,8 +303,6 @@ impl<'p> Parser<'p> {
                         Statement::Return(Some(self.parse_expression().unwrap()))
                     );
 
-                    self.next();
-
                     a
                 }
             }
@@ -285,8 +318,6 @@ impl<'p> Parser<'p> {
                         self.parse_expression().unwrap()
                     )
                 );
-
-                self.next();
 
                 a
             },
@@ -322,12 +353,10 @@ impl<'p> Parser<'p> {
 
         let cur = self.current();
 
-        match cur {
+        let expr = match cur {
             Number(ref n) => {
-                Some(
-                    Expression::Number(
-                        n.clone().parse::<f64>().unwrap()
-                    )
+                Expression::Number(
+                    n.clone().parse::<f64>().unwrap()
                 )
             },
             Ident(ref n) => {
@@ -367,21 +396,110 @@ impl<'p> Parser<'p> {
 
                         self.next();
 
-                        Some(
-                            Expression::Call(
-                                Box::new(var),
-                                args
-                            )
+                        Expression::Call(
+                            Box::new(var),
+                            args
                         )
                     } else {
-                        Some(var)
+                        var
                     }
                 } else {
                     panic!("Can't find variable `{}`", n)
                 }
-            }
-            c => { println!("{:?}", c); self.next(); None},
+            },
+
+            LParen => {
+                self.next();
+
+                let flag = self.in_operation;
+                self.in_operation = false;
+
+                let expr = self.parse_expression().unwrap();
+
+                self.in_operation = flag;
+
+                if self.current() != RParen {
+                    panic!("Expected `)` to close `(`");
+                }
+
+                expr
+            },
+
+            c => { println!("{:?}", c); self.next(); return None},
+        };
+
+        self.next();
+
+        if self.remaining() == 0 {
+            self.top -= 1;
+
+            return Some(expr)
         }
+
+        if self.current().to_op().is_some() && !self.in_operation {
+            Some(
+                self.parse_binary(expr)
+            )
+        } else {
+            Some(expr)
+        }
+    }
+
+    fn parse_binary(&mut self, left: Expression) -> Expression {
+        use self::Token::*;
+        
+        let mut expr_stack = vec!(left);
+        let mut op_stack   = vec!(self.current().to_op().unwrap());
+        self.next();
+
+        self.in_operation = true; // Don't want to chain operations
+
+        expr_stack.push(self.parse_expression().unwrap());
+
+        while op_stack.len() > 0 {
+            while let Some(op) = self.current().to_op() {
+                self.next();
+                let precedence = op.prec();
+
+                if precedence <= op_stack.last().unwrap().prec() {
+                    let right = expr_stack.pop().unwrap();
+                    let left  = expr_stack.pop().unwrap();
+
+                    expr_stack.push(
+                        Expression::Binary(
+                            Box::new(left),
+                            op_stack.pop().unwrap(),
+                            Box::new(right)
+                        )
+                    );
+
+                    if self.remaining() > 0 {
+                        expr_stack.push(self.parse_expression().unwrap());
+                        op_stack.push(op);
+                    } else {
+                        panic!("Reached EOF in binary operation")
+                    }
+                } else {
+                    expr_stack.push(self.parse_expression().unwrap());
+                    op_stack.push(op)
+                }
+            }
+
+            let right = expr_stack.pop().unwrap();
+            let left  = expr_stack.pop().unwrap();
+
+            expr_stack.push(
+                Expression::Binary(
+                    Box::new(left),
+                    op_stack.pop().unwrap(),
+                    Box::new(right)
+                )
+            );
+        }
+
+        self.in_operation = false;
+
+        expr_stack.pop().unwrap()
     }
 
     fn remaining(&self) -> usize {
@@ -439,6 +557,13 @@ fn codegen_expr(builder: &IrBuilder, expr: &Expression) -> ExprNode {
             builder.call(callee_ir, args_ir, None)
         },
 
+        Binary(left, op, right) => {
+            let left  = codegen_expr(&builder, left);
+            let right = codegen_expr(&builder, right);
+
+            builder.binary(left, op.to_ir(), right)
+        },
+
         _ => todo!()
     }
 }
@@ -491,7 +616,7 @@ fn codegen(builder: &mut IrBuilder, ast: &Vec<Statement>) {
 }
 
 const TEST: &'static str = r#"
-let a = 10;
+let a = 10 + 10 - (5 * 2 + 1);
 
 fn id() {
     fn bob() {
