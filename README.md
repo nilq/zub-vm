@@ -1,6 +1,13 @@
 # Zub VM
 > A super-fast, stack-based virtual machine for dynamic languages
 
+## Features
+
+- NaN-tagging value representation
+- Mark n' sweep garbage collection
+- Compact bytecode format
+- Easy-to-use intermediate representation
+
 ## Example
 
 ### Building IR is easy
@@ -62,13 +69,6 @@ fn foo() {
 
 global gangster = foo();
 ```
-
-## Technicalities
-
-- NaN-tagging value representation
-- Mark n' sweep garbage collection
-- Compact bytecode format
-- Easy-to-use intermediate representation
 
 ## Milestones
 
