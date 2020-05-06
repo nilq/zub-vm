@@ -17,7 +17,7 @@ let b = builder.number(30.0);
 
 let sum = builder.binary(a, BinaryOp::Add, b);
 
-builder.bind_global("sum", sum);
+builder.bind(Binding::global("sum"), sum);
 ```
 
 When you feel like the IR is looking smooth. Simply let VM throw it through the compiler, and run it.
@@ -25,6 +25,42 @@ When you feel like the IR is looking smooth. Simply let VM throw it through the 
 ```rust
 let mut vm = VM::new();
 vm.exec(&builder.build());
+```
+
+### Languages
+
+The `examples/` folder includes two small language implementations running on the ZubVM.
+
+#### Atto
+
+Atto is a functional, minimal language that showcases how little code is needed to implement a working, Turing-complete language. The syntax can be seen in the following teaser:
+
+```hs
+fn sum x is
+    if = x 0
+        1
+    + sum - x 1 sum - x 1
+
+fn main is
+    sum 12
+```
+
+#### Mini
+
+Mini is a simple language that looks basically like a mix of Rust and JavaScript. It covers a bit wider set of features than Atto. This does show in the size of the language though.
+
+```rust
+let bar = 13.37;
+
+fn foo() {
+  fn baz(c) {
+    return c + bar;
+  }
+  
+  return baz(10);
+}
+
+global gangster = foo();
 ```
 
 ## Technicalities
