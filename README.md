@@ -8,6 +8,15 @@
 - Compact bytecode format
 - Easy-to-use intermediate representation
 
+## Milestones
+
+- [x] Refined VM based on work by [Mr Briones](https://github.com/cwbriones)
+- [x] Tracing garbage collector
+- [x] High-level IR
+- [x] Compilation of IR
+- [ ] Optimizer (currently 80-90% Python speed, aiming for much faster)
+- [x] Profiler and disassembler
+
 ## Example
 
 ### Building IR is easy
@@ -69,15 +78,6 @@ fn foo() {
 
 global gangster = foo();
 ```
-
-## Milestones
-
-- [x] Refined VM based on work by [Mr Briones](https://github.com/cwbriones)
-- [x] Tracing garbage collector
-- [x] High-level IR
-- [x] Compilation of IR
-- [ ] Optimizer (currently 80-90% Python speed, aiming for much faster)
-- [x] Profiler and disassembler
 
 
 ## Special thanks
