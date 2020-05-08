@@ -183,7 +183,7 @@ pub enum Expr {
     List(Vec<ExprNode>),
     ListSet(ExprNode, ExprNode, ExprNode),
 
-    Dict, // To be made better in the near future
+    Dict(Vec<ExprNode>, Vec<ExprNode>), // They need to be the same size, funny enough
     DictSet(ExprNode, ExprNode, ExprNode),
 
     Block(Vec<ExprNode>),

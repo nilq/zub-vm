@@ -48,7 +48,7 @@ impl<'c> Disassembler<'c> {
     }
 
     fn constant(&mut self, idx: u8) {
-        let val = self.chunk.get_constant(idx).expect("invalid constant segment index");
+        let val = self.chunk.get_constant(idx);
         eprint!("CONSTANT\t{}\t{:?}", idx, val);
     }
 
@@ -73,8 +73,9 @@ impl<'c> Disassembler<'c> {
     fn index(&mut self) {}
     fn set_list_element(&mut self) {}
 
-    fn dict(&self) {
-        eprint!("DICT")
+    fn dict(&mut self) {
+        eprint!("DICT");
+        self.read_byte();
     }
 
     fn set_dict_element(&mut self) {}

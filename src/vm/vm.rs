@@ -413,7 +413,22 @@ impl VM {
 
     #[flame]
     fn dict(&mut self) {
-        let val = self.allocate(Object::Dict(Dict::empty())).into();
+        use im_rc::hashmap::HashMap;
+
+        let element_count = self.read_byte();
+
+        let mut content = HashMap::new();
+
+        for _ in 0 .. element_count {
+            let value = self.pop();
+            let key   = HashValue {
+                variant: self.pop().decode().to_hash()
+            };
+
+            content.insert(key, value);
+        }
+
+        let val = self.allocate(Object::Dict(Dict::new(content))).into();
         self.push(val)
     }
 

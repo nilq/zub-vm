@@ -36,10 +36,12 @@ enum Token<'t> {
     LCurly,
     #[token("}")]
     RCurly,
-    #[token(".")]
+    #[token("@")]
     Period,
     #[token(",")]
     Comma,
+    #[token(":")]
+    Colon,
     #[token(";")]
     Semicolon,
     #[token("+")]
@@ -248,11 +250,17 @@ impl<'p> Parser<'p> {
                 if self.current() == LParen {
                     self.next();
 
+                    self.depth += 1;
+                    self.function_depth += 1;
+
                     let mut params = Vec::new();
 
                     while self.current() != RParen {
                         let name = self.current_slice().unwrap().to_string();
-                        params.push(name);
+                        params.push(name.clone());
+
+                        let binding = Binding::local(name.clone().as_str(), self.depth, self.function_depth);
+                        self.depth_table.insert(name, binding.clone());
 
                         self.next();
 
@@ -269,8 +277,6 @@ impl<'p> Parser<'p> {
 
                     self.next(); // RParen
 
-                    self.depth += 1;
-                    self.function_depth += 1;
 
                     let body = self.parse_body();
 
@@ -381,7 +387,6 @@ impl<'p> Parser<'p> {
 
                         while self.current() != RParen {
                             args.push(self.parse_expression().unwrap());
-                            self.next();
 
                             if self.current() == RParen {
                                 break
@@ -425,14 +430,43 @@ impl<'p> Parser<'p> {
                 expr
             },
 
+            LCurly => {
+                self.next();
+
+                let mut keys = Vec::new();
+                let mut vals = Vec::new();
+
+                while self.current() != RCurly {
+                    keys.push(self.parse_expression().unwrap());
+                    
+                    if self.current() != Colon {
+                        panic!("Expected `:` after key")
+                    }
+
+                    self.next();
+
+                    vals.push(self.parse_expression().unwrap());
+
+                    if self.current() == RCurly {
+                        break
+                    }
+
+                    if self.current() != Comma {
+                        panic!("Expected `,` after value but found `{:?}`", self.current())
+                    }
+
+                    self.next();
+                }
+
+                Expression::Dict(keys, vals)
+            }
+
             c => { println!("{:?}", c); self.next(); return None},
         };
 
         self.next();
 
         if self.remaining() == 0 {
-            self.top -= 1;
-
             return Some(expr)
         }
 
@@ -564,6 +598,21 @@ fn codegen_expr(builder: &IrBuilder, expr: &Expression) -> ExprNode {
             builder.binary(left, op.to_ir(), right)
         },
 
+        Dict(keys, values) => {
+            let mut keys_ir = Vec::new();
+            let mut vals_ir = Vec::new();
+
+            for key in keys.iter() {
+                keys_ir.push(codegen_expr(&builder, key))
+            }
+
+            for value in values.iter() {
+                vals_ir.push(codegen_expr(&builder, value))
+            }
+
+            builder.dict(keys_ir, vals_ir)
+        },
+
         _ => todo!()
     }
 }
@@ -616,21 +665,21 @@ fn codegen(builder: &mut IrBuilder, ast: &Vec<Statement>) {
 }
 
 const TEST: &'static str = r#"
-let a = 10 + 10 - (5 * 2 + 1);
+let bar = 13.37;
 
-fn id() {
-    fn bob() {
-        return a;
-    }
-    
-    return bob();
+fn foo() {
+  fn baz(c) {
+    return c + bar;
+  }
+
+  return baz(10);
 }
 
-global foo = id()
+global gangster = foo();
 "#;
 
 fn main() {
-    let mut lex = Token::lexer(TEST);
+    let lex = Token::lexer(TEST);
 
     let mut parser = Parser::new(lex.collect::<Vec<Token>>());
 

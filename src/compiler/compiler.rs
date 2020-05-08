@@ -263,8 +263,14 @@ impl<'g> Compiler<'g> {
                 self.emit(Op::SetListElement);
             },
 
-            Dict => {
-                self.emit(Op::Dict)
+            Dict(keys, values) => {
+                for (key, val) in keys.iter().zip(values.iter()) {
+                    self.compile_expr(key);
+                    self.compile_expr(val);
+                }
+
+                self.emit(Op::Dict);
+                self.emit_byte(keys.len() as u8);
             },
 
             DictSet(ref list, ref index, ref value) => {

@@ -50,8 +50,12 @@ impl IrBuilder {
     }
 
 
+    pub fn dict(&self, keys: Vec<ExprNode>, values: Vec<ExprNode>) -> ExprNode {
+        Expr::Dict(keys, values).node(TypeInfo::nil())
+    }
+
     pub fn empty_dict(&self) -> ExprNode {
-        Expr::Dict.node(TypeInfo::nil())
+        Expr::Dict(Vec::new(), Vec::new()).node(TypeInfo::nil())
     }
 
     pub fn dict_set(&self, dict: ExprNode, index: ExprNode, value: ExprNode) -> ExprNode {

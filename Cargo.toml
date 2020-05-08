@@ -3,6 +3,9 @@ name = "zub"
 version = "0.1.0"
 authors = ["nilq <i.am.niels.nielsen@gmail.com>"]
 edition = "2018"
+homepage = "https://github.com/nilq/zub-vm"
+repository = "https://github.com/nilq/zub-vm"
+readme = "https://github.com/nilq/zub-vm/blob/master/README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
