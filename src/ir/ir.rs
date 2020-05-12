@@ -19,7 +19,7 @@ pub enum Literal {
 }
 
 // When depth is None, we're dealing with a global.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Binding {
     pub name: String,
     pub depth: Option<usize>,
@@ -94,6 +94,7 @@ pub enum BinaryOp {
     Lt,
     And,
     Or,
+    Pow,
 }
 
 #[derive(Clone, Debug)]

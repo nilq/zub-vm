@@ -11,6 +11,7 @@ use trace::*;
 
 type Generation = usize;
 
+#[derive(Clone)]
 pub struct Heap<T> {
     last_sweep: usize,
     object_sweeps: HashMap<Handle<T>, usize>,

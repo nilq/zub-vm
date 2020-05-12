@@ -213,6 +213,7 @@ pub enum Op {
     Mul,
     Div,
     Rem,
+    Pow,
 
     Not,
     Neg,
@@ -277,7 +278,8 @@ impl Op {
             Rem => buf.push(0x28),
             Dict => buf.push(0x29),
             SetDictElement => buf.push(0x30),
-            Index => buf.push(0x31)
+            Index => buf.push(0x31),
+            Pow => buf.push(0x32),
         }
     }
 }
@@ -323,6 +325,7 @@ macro_rules! decode_op {
             0x29 => $this.dict(),
             0x30 => $this.set_dict_element(),
             0x31 => $this.index(),
+            0x32 => $this.pow(),
             _ => {
                 panic!("Unknown op {}", $op);
             }

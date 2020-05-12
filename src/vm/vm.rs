@@ -7,6 +7,7 @@ use flame as f;
 use flamer::flame;
 
 use super::*;
+use super::compiler::CompileState;
 
 use std::mem;
 
@@ -87,14 +88,14 @@ macro_rules! binary_op {
 }
 
 pub struct VM {
-    heap: Heap<Object>,
+    pub heap: Heap<Object>,
     next_gc: usize,
 
     pub globals: HashMap<String, Value, FnvBuildHasher>,
     pub open_upvalues: Vec<UpValue>,
 
     pub stack: Vec<Value>,
-    frames: Vec<CallFrame>,
+    pub frames: Vec<CallFrame>,
 }
 
 impl VM {
@@ -109,9 +110,35 @@ impl VM {
         }
     }
 
+    pub fn exec_from(&mut self, atoms: &[ExprNode], locals: Vec<Local>, debug: bool) -> Vec<Local> {
+        let mut compiler = Compiler::new(&mut self.heap);
+
+        let function = compiler.compile_from(atoms, locals);
+        let locals = compiler.locals_cache;
+
+        if debug {
+            let dis = Disassembler::new(function.chunk(), &self.heap);
+            dis.disassemble();
+        }
+
+        let closure = Closure::new(function, Vec::new());
+        let value = self.allocate(Object::Closure(closure)).into();
+
+        self.push(value);
+        self.call(0);
+
+        self.run();
+
+        if debug {
+            f::dump_html(File::create("flamegraph.html").unwrap()).unwrap();
+        }
+
+        locals
+    }
+
     pub fn exec(&mut self, atoms: &[ExprNode], debug: bool) {
         let function = {
-            let compiler = Compiler::new(&mut self.heap);
+            let mut compiler = Compiler::new(&mut self.heap);
             compiler.compile(atoms)
         };
 
@@ -196,12 +223,9 @@ impl VM {
 
     #[flame]
     fn call(&mut self, arity: u8) {
-        // TODO: MAKE OPTION FOR INLINING HERE!
-
         let last = self.stack.len();
         let frame_start = last - (arity + 1) as usize;
         let callee = self.stack[frame_start].decode();
-
         if let Variant::Obj(handle) = callee {
             use self::Object::*;
 
@@ -609,6 +633,18 @@ impl VM {
     #[flame]
     fn rem(&mut self) {
         binary_op!(self, %);
+    }
+
+    #[flame]
+    fn pow(&mut self) {
+        let b = self.pop();
+        let a = self.pop();
+
+        if let (Variant::Float(a), Variant::Float(b)) = (a.decode(), b.decode()) {
+            let c = a.powf(b);
+
+            self.push(c.into());
+        }
     }
 
     #[flame]

@@ -3,6 +3,7 @@ use super::*;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+#[derive(Clone, Debug)]
 pub struct IrBuilder {
     program: Vec<ExprNode>,
 }
@@ -36,6 +37,12 @@ impl IrBuilder {
 
         self.emit(
             Expr::Return(value).node(info)
+        )
+    }
+
+    pub fn break_(&mut self) {
+        self.emit(
+            Expr::Break.node(TypeInfo::nil())
         )
     }
 
@@ -200,8 +207,8 @@ impl IrBuilder {
 
 
 
-    pub fn build(self) -> Vec<ExprNode> {
-        self.program
+    pub fn build(&self) -> Vec<ExprNode> {
+        self.program.clone()
     }
 
     pub fn emit(&mut self, atom: ExprNode) {

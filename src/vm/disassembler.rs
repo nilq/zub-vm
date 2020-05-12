@@ -58,6 +58,7 @@ impl<'c> Disassembler<'c> {
     fn sub(&self) { eprint!("SUB"); }
     fn mul(&self) { eprint!("MUL"); }
     fn rem(&self) { eprint!("REM"); }
+    fn pow(&self) { eprint!("POW"); }
     fn div(&self) { eprint!("DIV"); }
     fn neg(&self) { eprint!("NEG"); }
     fn not(&self) { eprint!("NOT"); }

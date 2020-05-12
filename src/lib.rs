@@ -251,6 +251,6 @@ mod tests {
         let mut vm = VM::new();
         vm.exec(&builder.build(), true);
 
-        println!("{:#?}", vm.globals)
+        println!(" sad sad {:#?}", vm.globals)
     }
 }

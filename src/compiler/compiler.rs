@@ -1,8 +1,8 @@
 use super::chunk::{ Chunk, Op };
 use super::*;
 
-#[derive(Debug)]
-struct Local {
+#[derive(Debug, Clone)]
+pub struct Local {
     pub name: String,
     pub depth: usize,
     pub captured: bool,
@@ -16,14 +16,14 @@ struct UpValue {
 }
 
 #[derive(Debug)]
-struct CompileState {
+pub struct CompileState {
     line: usize,
-    locals: Vec<Local>,
+    pub locals: Vec<Local>,
     upvalues: Vec<UpValue>,
     function: FunctionBuilder,
     scope_depth: usize,
     breaks: Vec<usize>,
-    method: bool
+    method: bool,
 }
 
 impl CompileState {
@@ -157,7 +157,8 @@ impl CompileState {
 
 pub struct Compiler<'g> {
     heap: &'g mut Heap<Object>,
-    states: Vec<CompileState>,
+    pub states: Vec<CompileState>,
+    pub locals_cache: Vec<Local>,
 }
 
 impl<'g> Compiler<'g> {
@@ -165,11 +166,24 @@ impl<'g> Compiler<'g> {
         Compiler {
             heap,
             states: Vec::new(),
+            locals_cache: Vec::new(),
         }
     }
 
-    pub fn compile(mut self, exprs: &[ExprNode]) -> Function {
+    pub fn compile(&mut self, exprs: &[ExprNode]) -> Function {
         self.start_function(false, "<zub>", 0, 0);
+
+        for expr in exprs.iter() {
+            self.compile_expr(expr)
+        }
+
+        self.emit_return(None);
+        self.end_function()
+    }
+
+    pub fn compile_from(&mut self, exprs: &[ExprNode], locals: Vec<Local>) -> Function {
+        self.start_function(false, "<zub>", 0, 0);
+        self.states.last_mut().unwrap().locals = locals;
 
         for expr in exprs.iter() {
             self.compile_expr(expr)
@@ -321,6 +335,11 @@ impl<'g> Compiler<'g> {
                 }
             },
 
+            Break => {
+                let jmp = self.emit_jmp();
+                self.state_mut().add_break(jmp)
+            },
+
             Binary(lhs, op, rhs) => {
                 use self::BinaryOp::*;
 
@@ -373,6 +392,7 @@ impl<'g> Compiler<'g> {
                             Equal => self.emit(Op::Equal),
                             Gt => self.emit(Op::Greater),
                             Lt => self.emit(Op::Less),
+                            Pow => self.emit(Op::Pow),
 
                             GtEqual => {
                                 self.emit(Op::Less);
@@ -397,7 +417,7 @@ impl<'g> Compiler<'g> {
 
             Bind(ref var, ref init) => {
                 self.compile_expr(init);
-                self.var_define(var, None)
+                self.var_define(var, None);
             },
 
             BindGlobal(ref var, ref init) => {
@@ -515,7 +535,7 @@ impl<'g> Compiler<'g> {
     fn start_function(&mut self, method: bool, name: &str, arity: u8, scope: usize) {
         let next_function = FunctionBuilder::new(name, arity);
         let reserved_var = if method { "self" } else { "" };
-        let mut state = CompileState::new(method, reserved_var, next_function, scope);
+        let state = CompileState::new(method, reserved_var, next_function, scope);
 
         self.states.push(state)
     }
@@ -523,7 +543,9 @@ impl<'g> Compiler<'g> {
     fn end_function(&mut self) -> Function {
         // self.emit_return(None);
 
-        let mut state = self.states.pop().expect("can't have empty state");
+        let mut state: CompileState = self.states.pop().expect("states can't be empty");
+
+        self.locals_cache.extend(state.locals.clone());
 
         state.function.set_upvalue_count(state.upvalues.len());
         state.function.build()
@@ -540,7 +562,7 @@ impl<'g> Compiler<'g> {
                     enclosing.capture_local(name).map(|local| (i, local))
                 })
                 .next()
-                .expect("upvalue marked during resolution, but wasn't found");
+                .expect(&format!("upvalue marked during resolution, but wasn't found: {}", name));
 
 
         index = self.states[scope + 1].add_upvalue(index, true);
