@@ -49,6 +49,8 @@ vm.exec(&builder.build());
 
 Hugorm is a dynamic, python-like language being built for small data science and game projects.
 
+[https://github.com/nilq/hugorm](https://github.com/nilq/Hugorm)
+
 ### Examples
 
 The `examples/` folder includes two small language implementations running on the ZubVM.
