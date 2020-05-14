@@ -182,10 +182,8 @@ pub enum Expr {
     While(ExprNode, ExprNode),
 
     List(Vec<ExprNode>),
-    ListSet(ExprNode, ExprNode, ExprNode),
-
     Dict(Vec<ExprNode>, Vec<ExprNode>), // They need to be the same size, funny enough
-    DictSet(ExprNode, ExprNode, ExprNode),
+    SetElement(ExprNode, ExprNode, ExprNode),
 
     Block(Vec<ExprNode>),
 

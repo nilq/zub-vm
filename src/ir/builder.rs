@@ -52,8 +52,8 @@ impl IrBuilder {
         Expr::List(content).node(TypeInfo::nil())
     }
 
-    pub fn list_set(&self, list: ExprNode, index: ExprNode, value: ExprNode) -> ExprNode {
-        Expr::ListSet(list, index, value).node(TypeInfo::nil())
+    pub fn set_element(&self, list: ExprNode, index: ExprNode, value: ExprNode) -> ExprNode {
+        Expr::SetElement(list, index, value).node(TypeInfo::nil())
     }
 
 
@@ -64,12 +64,6 @@ impl IrBuilder {
     pub fn empty_dict(&self) -> ExprNode {
         Expr::Dict(Vec::new(), Vec::new()).node(TypeInfo::nil())
     }
-
-    pub fn dict_set(&self, dict: ExprNode, index: ExprNode, value: ExprNode) -> ExprNode {
-        Expr::DictSet(dict, index, value).node(TypeInfo::nil())
-    }
-
-
 
     pub fn var(&self, binding: Binding) -> ExprNode {
         Expr::Var(

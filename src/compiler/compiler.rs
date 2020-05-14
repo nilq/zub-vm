@@ -269,12 +269,12 @@ impl<'g> Compiler<'g> {
                 self.emit_byte(content.len() as u8)
             },
 
-            ListSet(ref list, ref index, ref value) => {
+            SetElement(ref list, ref index, ref value) => {
                 self.compile_expr(value);
                 self.compile_expr(index);
                 self.compile_expr(list);
 
-                self.emit(Op::SetListElement);
+                self.emit(Op::SetElement);
             },
 
             Dict(keys, values) => {
@@ -285,14 +285,6 @@ impl<'g> Compiler<'g> {
 
                 self.emit(Op::Dict);
                 self.emit_byte(keys.len() as u8);
-            },
-
-            DictSet(ref list, ref index, ref value) => {
-                self.compile_expr(value);
-                self.compile_expr(index);
-                self.compile_expr(list);
-
-                self.emit(Op::SetDictElement);
             },
 
             If(ref cond, ref then, ref els) => {

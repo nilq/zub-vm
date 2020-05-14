@@ -229,10 +229,8 @@ pub enum Op {
     CloseUpValue,
 
     List,
-    SetListElement,
-
     Dict,
-    SetDictElement,
+    SetElement,
 
     Index,
 }
@@ -274,12 +272,11 @@ impl Op {
             DefineGlobal => buf.push(0x25),
 
             List => buf.push(0x26),
-            SetListElement => buf.push(0x27),
-            Rem => buf.push(0x28),
-            Dict => buf.push(0x29),
-            SetDictElement => buf.push(0x30),
-            Index => buf.push(0x31),
-            Pow => buf.push(0x32),
+            Rem => buf.push(0x27),
+            Dict => buf.push(0x28),
+            SetElement => buf.push(0x29),
+            Index => buf.push(0x30),
+            Pow => buf.push(0x31),
         }
     }
 }
@@ -320,12 +317,11 @@ macro_rules! decode_op {
             0x24 => $this.closure(),
             0x25 => $this.define_global(),
             0x26 => $this.list(),
-            0x27 => $this.set_list_element(),
-            0x28 => $this.rem(),
-            0x29 => $this.dict(),
-            0x30 => $this.set_dict_element(),
-            0x31 => $this.index(),
-            0x32 => $this.pow(),
+            0x27 => $this.rem(),
+            0x28 => $this.dict(),
+            0x29 => $this.set_element(),
+            0x30 => $this.index(),
+            0x31 => $this.pow(),
             _ => {
                 panic!("Unknown op {}", $op);
             }

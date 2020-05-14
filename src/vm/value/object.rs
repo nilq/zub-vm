@@ -36,7 +36,7 @@ impl Object {
     impl_as!(as_list, List);
     impl_as!(as_dict, Dict);
 
-    pub fn native_fn(name: &str, arity: u8, function: fn(&Heap<Object>, &[Value]) -> Value) -> Self {
+    pub fn native_fn(name: &str, arity: u8, function: fn(&mut Heap<Object>, &[Value]) -> Value) -> Self {
         Object::NativeFunction(
             NativeFunction {
                 name: name.into(),
@@ -173,7 +173,7 @@ impl Trace<Object> for Function {
 pub struct NativeFunction {
     pub name: String,
     pub arity: u8,
-    pub function: fn(&Heap<Object>, &[Value]) -> Value,
+    pub function: fn(&mut Heap<Object>, &[Value]) -> Value,
 }
 
 #[derive(Debug, Clone)]
@@ -214,7 +214,7 @@ impl UpValue {
 }
 
 pub struct Dict {
-    content: HashMap<HashValue, Value>,
+    pub content: HashMap<HashValue, Value>,
 }
 
 impl Dict {

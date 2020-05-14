@@ -68,18 +68,20 @@ impl<'c> Disassembler<'c> {
     fn pop(&self) { eprint!("POP"); }
 
     fn list(&mut self) {
-        eprint!("LIST")
+        eprint!("LIST");
+        self.read_byte();
     }
 
     fn index(&mut self) {}
-    fn set_list_element(&mut self) {}
 
     fn dict(&mut self) {
         eprint!("DICT");
         self.read_byte();
     }
 
-    fn set_dict_element(&mut self) {}
+    fn set_element(&mut self) {
+        eprint!("SET_ELEMENT")
+    }
 
 
     fn jmp(&mut self) {

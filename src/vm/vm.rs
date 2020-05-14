@@ -160,7 +160,7 @@ impl VM {
         }
     }
 
-    pub fn add_native(&mut self, name: &str, func: fn(&Heap<Object>, &[Value]) -> Value, arity: u8) {
+    pub fn add_native(&mut self, name: &str, func: fn(&mut Heap<Object>, &[Value]) -> Value, arity: u8) {
         let function = self.allocate(
             Object::native_fn(name, arity, func)
         );
@@ -226,6 +226,7 @@ impl VM {
         let last = self.stack.len();
         let frame_start = last - (arity + 1) as usize;
         let callee = self.stack[frame_start].decode();
+
         if let Variant::Obj(handle) = callee {
             use self::Object::*;
 
@@ -238,7 +239,9 @@ impl VM {
                         self.runtime_error(&format!("arity mismatch: {} != {}", native.arity, arity))
                     }
 
-                    let value = (native.function)(&self.heap, &self.stack[frame_start..]);
+                    let value = (native.function)(&mut self.heap, &self.stack[frame_start..]);
+
+                    self.stack.drain(frame_start + 1 ..);
 
                     self.stack.pop();
                     self.stack.push(value);
@@ -372,13 +375,35 @@ impl VM {
 
     #[flame]
     fn add(&mut self) {
-        let a = self.pop();
         let b = self.pop();
+        let a = self.pop();
 
         use self::Variant::*;
 
         match (a.decode(), b.decode()) {
             (Float(a), Float(b)) => return self.push((a + b).into()),
+            (Obj(a), Obj(b)) => {
+                let a = self.deref(a).as_string().unwrap();
+                let b = self.deref(b).as_string().unwrap();
+
+                let new = self.allocate(Object::String(format!("{}{}", a, b)));
+
+                return self.push(new.into())
+            },
+            (Obj(a), Float(b)) => {
+                let a = self.deref(a).as_string().unwrap();
+
+                let new = self.allocate(Object::String(format!("{}{}", a, b)));
+
+                return self.push(new.into())
+            },
+            (Float(a), Obj(b)) => {
+                let b = self.deref(b).as_string().unwrap();
+
+                let new = self.allocate(Object::String(format!("{}{}", a, b)));
+
+                return self.push(new.into())
+            },
             _ => {}
         }
     }
@@ -446,7 +471,7 @@ impl VM {
         for _ in 0 .. element_count {
             let value = self.pop();
             let key   = HashValue {
-                variant: self.pop().decode().to_hash()
+                variant: self.pop().decode().to_hash(&self.heap)
             };
 
             content.insert(key, value);
@@ -461,7 +486,7 @@ impl VM {
         // corn
         let dict  = self.pop();
         let key = HashValue {
-            variant: self.pop().decode().to_hash()
+            variant: self.pop().decode().to_hash(&self.heap)
         };
 
         let value = self.pop();
@@ -480,7 +505,7 @@ impl VM {
         // corn
         let dict  = self.pop();
         let key = HashValue {
-            variant: self.pop().decode().to_hash()
+            variant: self.pop().decode().to_hash(&self.heap)
         };
 
         let dict_handle = dict
@@ -531,6 +556,44 @@ impl VM {
     }
 
     #[flame]
+    fn set_element(&mut self) {
+        let list = self.pop();
+        let index = self.pop();
+        let value = self.pop();
+
+        let variant = match index.decode() {
+            Variant::Float(n) => HashVariant::Int(n as i64),
+            c @ Variant::True | c @ Variant::False => HashVariant::Bool(c == Variant::True),
+            Variant::Obj(ref handle) => {
+                HashVariant::Str(self.deref(*handle).as_string().unwrap().to_owned())
+            },
+            Nil => HashVariant::Nil,
+        };
+
+        let list_object = self.heap.get_mut_unchecked(list.as_object().unwrap());
+
+        if let Object::List(list) = list_object {
+            let idx = if let Variant::Float(ref index) = index.decode() {
+                *index as usize
+            } else {
+                panic!("Can't index list with non-number")
+            };
+    
+            list.set(idx as usize, value);
+
+            return
+        }
+
+        if let Object::Dict(dict) = list_object {
+            let key = HashValue {
+                variant
+            };
+
+            dict.insert(key, value);
+        }
+    }
+
+    #[flame]
     fn index(&mut self) {
         let list = self.pop();
         let index = self.pop();
@@ -557,13 +620,13 @@ impl VM {
 
         if let Some(dict) = list.as_dict() {
             let key = HashValue {
-                variant: index.decode().to_hash()
+                variant: index.decode().to_hash(&self.heap)
             };
 
             if let Some(value) = dict.get(&key) {
                 self.push(*value)
             } else {
-                panic!("no such field `{:?}` on dict", key)
+                panic!("no such field `{:?}` on dict with {:#?}", key, dict.content)
             }
         }
     }

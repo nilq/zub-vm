@@ -1,3 +1,5 @@
+#![feature(vec_drain_as_slice)]
+
 extern crate flame;
 #[macro_use] extern crate flamer;
 extern crate im_rc;
@@ -114,11 +116,10 @@ mod tests {
 
         builder.emit(call);
 
-        fn print(heap: &Heap<Object>, args: &[Value]) -> Value {
+        fn print(heap: &mut Heap<Object>, args: &[Value]) -> Value {
             println!("{}", args[1].with_heap(heap));
             Value::nil()
         }
-
 
         let mut vm = VM::new();
 
@@ -145,7 +146,7 @@ mod tests {
         let index = builder.int(0);
         
         let new_element = builder.number(777.0);
-        let set_list_element = builder.list_set(var.clone(), index.clone(), new_element);
+        let set_list_element = builder.set_element(var.clone(), index.clone(), new_element);
         builder.emit(set_list_element);
 
         let right = builder.binary(var, BinaryOp::Index, index);
@@ -218,7 +219,7 @@ mod tests {
 
         builder.emit(call); // :D
 
-        fn print_native(heap: &Heap<Object>, args: &[Value]) -> Value {
+        fn print_native(heap: &mut Heap<Object>, args: &[Value]) -> Value {
             println!("{}", args[1].with_heap(heap));
             Value::nil()
         }
@@ -240,7 +241,7 @@ mod tests {
 
         let var = builder.var(Binding::local("stuff", 0, 0));
 
-        let set_fruit = builder.dict_set(var.clone(), fruit.clone(), apple);
+        let set_fruit = builder.set_element(var.clone(), fruit.clone(), apple);
 
         builder.emit(set_fruit);
 

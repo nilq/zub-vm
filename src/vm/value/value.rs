@@ -13,7 +13,7 @@ pub struct Value {
 pub enum HashVariant {
     Bool(bool),
     Int(i64),
-    Obj(Handle<Object>),
+    Str(String),
     Nil,
 }
 
@@ -22,7 +22,7 @@ pub struct HashValue {
     pub variant: HashVariant
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Variant {
     Float(f64),
     True,
@@ -32,7 +32,7 @@ pub enum Variant {
 }
 
 impl Variant {
-    pub fn to_hash(&self) -> HashVariant {
+    pub fn to_hash(&self, heap: &Heap<Object>) -> HashVariant {
         use self::Variant::*;
 
         match *self {
@@ -47,7 +47,9 @@ impl Variant {
             True  => HashVariant::Bool(true),
             False => HashVariant::Bool(false),
 
-            Obj(ref n) => HashVariant::Obj(*n),
+            Obj(ref n) => unsafe {
+                HashVariant::Str(heap.get_unchecked(n).as_string().unwrap().clone().to_string())
+            },
 
             Nil => HashVariant::Nil,
         }
