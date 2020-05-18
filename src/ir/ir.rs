@@ -175,8 +175,12 @@ pub enum Expr {
     Binary(ExprNode, BinaryOp, ExprNode),
     Call(Call),
     Function(IrFunction),
+    AnonFunction(IrFunction), // variable here will be unique id
     Unary(UnaryOp, ExprNode),
     Return(Option<ExprNode>),
+
+    Not(ExprNode),
+    Neg(ExprNode),
 
     If(ExprNode, ExprNode, Option<ExprNode>),
     While(ExprNode, ExprNode),
@@ -188,6 +192,7 @@ pub enum Expr {
     Block(Vec<ExprNode>),
 
     Break,
+    Pop,
 }
 
 impl Expr {

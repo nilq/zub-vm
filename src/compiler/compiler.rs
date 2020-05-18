@@ -244,6 +244,20 @@ impl<'g> Compiler<'g> {
                 self.function_decl(ir_func);
             },
 
+            AnonFunction(ref ir_func) => {
+                self.function_decl(ir_func);
+            }
+
+            Not(ref expr) => {
+                self.compile_expr(expr);
+                self.emit(Op::Not)
+            }
+
+            Neg(ref expr) => {
+                self.compile_expr(expr);
+                self.emit(Op::Neg)
+            }
+
             Call(ref call) => {
                 let arity = call.args.len();
 
@@ -331,6 +345,10 @@ impl<'g> Compiler<'g> {
                 let jmp = self.emit_jmp();
                 self.state_mut().add_break(jmp)
             },
+
+            Pop => {
+                self.emit(Op::Pop)
+            }
 
             Binary(lhs, op, rhs) => {
                 use self::BinaryOp::*;

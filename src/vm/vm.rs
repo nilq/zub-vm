@@ -241,7 +241,7 @@ impl VM {
 
                     let value = (native.function)(&mut self.heap, &self.stack[frame_start..]);
 
-                    self.stack.drain(frame_start + 1 ..);
+                    self.stack.drain(frame_start ..);
 
                     self.stack.pop();
                     self.stack.push(value);
@@ -786,7 +786,7 @@ impl VM {
 
     fn push(&mut self, value: Value) {
         if self.stack.len() == STACK_SIZE {
-            panic!("STACK OVERFLOW >:(");
+            panic!("STACK OVERFLOW >:( @ {:#?}", &self.stack[STACK_SIZE - 50 ..]);
         }
 
         self.stack.push(value);
