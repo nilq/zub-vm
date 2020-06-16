@@ -1,6 +1,6 @@
 [package]
 name = "zub"
-version = "0.3.0"
+version = "0.3.14"
 authors = ["nilq <i.am.niels.nielsen@gmail.com>"]
 edition = "2018"
 homepage = "https://github.com/nilq/zub-vm"

@@ -182,10 +182,10 @@ impl VM {
             .expect("redundant cast to succeed");
 
         let last = self.stack.len();
-        let frame_start = last - (arity + 1) as usize;
+        let frame_start = if last < arity as usize { 0 } else { last - (arity + 1) as usize };
 
         if closure.arity() != arity {
-            self.runtime_error(&format!("arity mismatch: {} != {}", closure.arity(), arity))
+            self.runtime_error(&format!("arity mismatch: {} != {} @ {}: {:#?}", closure.arity(), arity, closure.name(), self.stack))
         }
 
         let frame = CallFrame::new(handle, frame_start);
@@ -200,7 +200,7 @@ impl VM {
             .and_then(|o| o.as_function())
             .cloned()
             .expect("closure expected function argument");
-        
+
         let mut upvalues = Vec::new();
 
         for _ in 0 .. function.upvalue_count() {
@@ -224,7 +224,9 @@ impl VM {
     #[flame]
     fn call(&mut self, arity: u8) {
         let last = self.stack.len();
-        let frame_start = last - (arity + 1) as usize;
+
+        let frame_start = if last < arity as usize { 0 } else { last - (arity + 1) as usize };
+
         let callee = self.stack[frame_start].decode();
 
         if let Variant::Obj(handle) = callee {
@@ -236,12 +238,12 @@ impl VM {
                 },
                 NativeFunction(ref native) => {
                     if native.arity != arity {
-                        self.runtime_error(&format!("arity mismatch: {} != {}", native.arity, arity))
+                        self.runtime_error(&format!("arity mismatch: {} != {} @ ({} {})", native.arity, arity, native.name, native.arity))
                     }
 
                     let value = (native.function)(&mut self.heap, &self.stack[frame_start..]);
 
-                    self.stack.drain(frame_start ..);
+                    self.stack.drain(frame_start + 1..);
 
                     self.stack.pop();
                     self.stack.push(value);
