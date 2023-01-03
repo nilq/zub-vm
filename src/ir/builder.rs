@@ -126,6 +126,13 @@ impl IrBuilder {
         Expr::Literal(lit).node(info)
     }
 
+    pub fn nil(&self) -> ExprNode {
+        let info = TypeInfo::new(Type::Nil);
+        let lit = Literal::Nil;
+
+        Expr::Literal(lit).node(info)
+    }
+
 
 
     pub fn function(&mut self, var: Binding, params: &[&str], mut body_build: impl FnMut(&mut IrBuilder)) -> ExprNode {
