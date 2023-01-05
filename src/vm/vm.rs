@@ -76,14 +76,8 @@ macro_rules! binary_op {
         let b = $self.pop();
         let a = $self.pop();
 
-        if let (Variant::Float(a), Variant::Float(b)) = (a.decode(), b.decode()) {
-            let c = a $op b;
-            $self.push(c.into());
-
-            return
-        }
-
-        // TODO: ERROR HERE
+        $self.push((a == b).into());
+        return
     }
 }
 
