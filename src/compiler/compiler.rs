@@ -61,7 +61,7 @@ impl CompileState {
     }
 
     fn add_local(&mut self, var: &str, depth: usize) -> u8 {
-        let depth = self.scope_depth - depth;
+        let depth = self.scope_depth - (depth-1);
 
         if self.locals.len() == std::u8::MAX as usize {
             panic!("local variable overflow")
@@ -239,9 +239,8 @@ impl<'g> Compiler<'g> {
             Return(val) => self.emit_return((*val).clone()),
 
             Function(ref ir_func) => {
-                self.var_define(&ir_func.var, None);
-
                 self.function_decl(ir_func);
+                self.var_define(&ir_func.var, None);
             },
 
             AnonFunction(ref ir_func) => {
@@ -508,7 +507,7 @@ impl<'g> Compiler<'g> {
         self.start_function(decl.method, name, arity, 1);
 
         for p in params {
-            self.state_mut().add_local(p.name(), 0);
+            self.state_mut().add_local(p.name(), 1);
             self.state_mut().resolve_local(p.name());
         }
 
@@ -524,10 +523,8 @@ impl<'g> Compiler<'g> {
         let handle = self.heap.insert(Object::Function(function)).into_handle();
 
         let value = Value::object(handle);
-        let idx = self.chunk_mut().add_constant(value);
 
         self.emit(Op::Closure);
-        self.emit_byte(idx);
 
         for upvalue in upvalues {
             self.emit_byte(
@@ -540,6 +537,9 @@ impl<'g> Compiler<'g> {
 
             self.emit_byte(upvalue.index)
         }
+        
+        let idx = self.chunk_mut().add_constant(value);
+        self.emit_byte(idx);
     }
 
     fn start_function(&mut self, method: bool, name: &str, arity: u8, scope: usize) {
@@ -711,6 +711,8 @@ impl<'g> Compiler<'g> {
         self.chunk().len()
     }
 
+    /// Patches jump instruction to jump to current
+    /// Instruction Pointer (IP)
     fn patch_jmp(&mut self, idx: usize) {
         let jmp = self.ip();
         let lo = (jmp & 0xff) as u8;
