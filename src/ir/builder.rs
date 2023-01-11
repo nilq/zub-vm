@@ -27,14 +27,19 @@ impl IrBuilder {
         self.emit(mutate.clone().node(TypeInfo::nil()))
     }
 
-    pub fn ret(&mut self, value: Option<ExprNode>) {
+    pub fn ret_(&mut self, value: Option<ExprNode>) -> ExprNode {
         let info = if let Some(ref value) = value {
             value.type_info().clone()
         } else {
             TypeInfo::nil()
         };
 
-        self.emit(Expr::Return(value).node(info))
+        Expr::Return(value).node(info)
+    }
+
+    pub fn ret(&mut self, value: Option<ExprNode>) {
+        let node = self.ret_(value);
+        self.emit(node);
     }
 
     pub fn break_(&mut self) {
@@ -155,11 +160,22 @@ impl IrBuilder {
         Expr::If(cond, then_body, else_body).node(TypeInfo::nil())
     }
 
+    pub fn block(&mut self, body: Vec<ExprNode>) -> ExprNode {
+        Expr::Block(body).node(TypeInfo::nil())
+    }
+
+    pub fn block_(&mut self, build: impl FnOnce(&mut IrBuilder)) -> ExprNode {
+        let builder = &mut IrBuilder::new();
+        build(builder);
+
+        Expr::Block(builder.build()).node(TypeInfo::nil())
+    }
+
     pub fn if_(
         &mut self,
         cond: ExprNode,
-        then_build: fn(&mut IrBuilder),
-        else_build: Option<fn(&mut IrBuilder)>,
+        then_build: impl FnOnce(&mut IrBuilder),
+        else_build: Option<impl FnOnce(&mut IrBuilder)>,
     ) -> ExprNode {
         let mut then_builder = IrBuilder::new();
 
