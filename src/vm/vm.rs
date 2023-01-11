@@ -154,10 +154,8 @@ impl VM {
         }
     }
 
-    pub fn add_native(&mut self, name: &str, func: fn(&mut Heap<Object>, &[Value]) -> Value, arity: u8) {
-        let function = self.allocate(
-            Object::native_fn(name, arity, func)
-        );
+    pub fn add_native(&mut self, name: &str, func: NativeFunctionType, arity: u8) {
+        let function = self.allocate(Object::native_fn(name, arity, func));
 
         self.globals.insert(name.into(), function.into());
     }
@@ -167,6 +165,38 @@ impl VM {
             let inst = self.read_byte();
             decode_op!(inst, self)
         }
+    }
+
+    fn debug_stack(&mut self) {
+        println!("==== Stack ====");
+        let iter = self.stack.iter();
+        for a in iter {
+            let val = a.with_heap(&self.heap);
+            println!("{val}");
+        }
+        println!("===============");
+    }
+
+    #[flame]
+    pub fn internal_call(&mut self, handle: Handle<Object>, args: Vec<Value>) -> Value {
+        for arg in &args {
+            self.push(arg.clone());
+        }
+        
+        let last = self.stack.len();
+
+        let frame_start = if last < args.len() as usize {
+            0
+        } else {
+            last - (args.len() + 1) as usize
+        };
+
+        let frame = CallFrame::new(handle, frame_start);
+
+
+        self.frames.push(frame);
+
+        self.run_and_find_value(self.frames.len())
     }
 
     #[flame]
@@ -226,18 +256,24 @@ impl VM {
         if let Variant::Obj(handle) = callee {
             use self::Object::*;
 
-            match unsafe { self.heap.get_unchecked(handle) } {
-                Closure(_) => {
-                    self.call_closure(handle, arity)
-                },
-                NativeFunction(ref native) => {
-                    if native.arity != arity {
-                        self.runtime_error(&format!("arity mismatch: {} != {} @ ({} {})", native.arity, arity, native.name, native.arity))
-                    }
+            let value = { unsafe { self.heap.get_unchecked(handle) } };
+            
+            if let Closure(_) = value {
+                self.call_closure(handle, arity);
+            } else if let NativeFunction(ref native) = value {
+                let native = native.clone();
 
-                    let value = (native.function)(&mut self.heap, &self.stack[frame_start..]);
+                if native.arity != arity {
+                    self.runtime_error(&format!(
+                        "arity mismatch: {} != {} @ ({} {})",
+                        native.arity, arity, native.name, native.arity
+                    ))
+                }
 
-                    self.stack.drain(frame_start + 1..);
+                let mut ctx = CallContext::new(self, frame_start);
+                let value = (native.function)(&mut ctx);
+
+                self.stack.drain(frame_start + 1..);
 
                     self.stack.pop();
                     self.stack.push(value);

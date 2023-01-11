@@ -1,9 +1,9 @@
-use super::super::gc::{ *, tag::*, trace::* };
+use super::super::gc::{tag::*, trace::*, *};
 use super::*;
 
+use std::cell::RefCell;
 use std::fmt::{Debug, Display};
 use std::rc::Rc;
-use std::cell::RefCell;
 
 use im_rc::hashmap::HashMap;
 
@@ -26,7 +26,7 @@ pub enum Object {
     NativeFunction(NativeFunction),
     Closure(Closure),
     List(List),
-    Dict(Dict)
+    Dict(Dict),
 }
 
 impl Object {
@@ -36,14 +36,16 @@ impl Object {
     impl_as!(as_list, List);
     impl_as!(as_dict, Dict);
 
-    pub fn native_fn(name: &str, arity: u8, function: fn(&mut Heap<Object>, &[Value]) -> Value) -> Self {
-        Object::NativeFunction(
-            NativeFunction {
-                name: name.into(),
-                arity,
-                function,
-            },
-        )
+    pub fn native_fn(
+        name: &str,
+        arity: u8,
+        function: NativeFunctionType,
+    ) -> Self {
+        Object::NativeFunction(NativeFunction {
+            name: name.into(),
+            arity,
+            function,
+        })
     }
 
     pub fn as_closure_mut(&mut self) -> Option<&mut Closure> {
@@ -58,14 +60,14 @@ impl Object {
 impl Trace<Self> for Object {
     fn trace(&self, tracer: &mut Tracer<Self>) {
         use self::Object::*;
-        
+
         match self {
-            String(_) => {},
+            String(_) => {}
             Function(f) => f.trace(tracer),
-            NativeFunction(_) => {},
+            NativeFunction(_) => {}
             Closure(c) => c.trace(tracer),
             List(l) => l.trace(tracer),
-            Dict(d) => d.trace(tracer)
+            Dict(d) => d.trace(tracer),
         }
     }
 }
@@ -77,7 +79,7 @@ impl Debug for Object {
         match self {
             String(ref s) => write!(f, "{:?}", s),
             NativeFunction(ref na) => write!(f, "<native fn {:?}>", na.name),
-            Function(ref fun) => write!(f, "<fn {:?}>", fun.name),
+            Function(ref fun) => write!(f, "{}", display_function(fun)),
             Closure(ref cl) => write!(f, "<closure {:?}>", cl.function),
             List(ref ls) => write!(f, "<list [{:?}]>", ls.content.len()),
             Dict(ref dict) => write!(f, "<dict [{:?}]>", dict.content.len()),
@@ -92,12 +94,25 @@ impl<'h, 'a> Display for WithHeap<'h, &'a Object> {
         match self.item {
             String(ref s) => write!(f, "{}", s),
             NativeFunction(ref na) => write!(f, "<native fn {}>", na.name),
-            Function(ref fun) => write!(f, "<fn {}>", fun.name),
+            Function(ref fun) => write!(f, "{}", display_function(fun)),
             Closure(ref cl) => write!(f, "<fn {}>", cl.function.name),
             List(ref ls) => write!(f, "<list [{}]>", ls.content.len()),
             Dict(ref ls) => write!(f, "<dict [{}]>", ls.content.len()),
         }
     }
+}
+
+fn display_function(function: &Function) -> String {
+    let chars = b"abcdefghijklmnopqrstuvwxyz";
+
+    format!(
+        "<fn {:}({:})>",
+        function.name,
+        (0..function.arity)
+            .map(|num| (chars[num as usize] as char).to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    )
 }
 
 #[derive(Debug)]
@@ -112,7 +127,12 @@ impl FunctionBuilder {
     pub fn new(name: &str, arity: u8) -> Self {
         let name: String = name.into();
         let chunk = Chunk::new(name.clone());
-        FunctionBuilder { name, arity, chunk, upvalue_count: 0 }
+        FunctionBuilder {
+            name,
+            arity,
+            chunk,
+            upvalue_count: 0,
+        }
     }
 
     pub fn name(&self) -> &str {
@@ -169,11 +189,25 @@ impl Trace<Object> for Function {
     }
 }
 
+/// Type to represent a native function which is able to call
+/// a function passed to it as an argument
+pub type Callable<'a> = &'a mut dyn FnMut(Handle<Object>, u8, Vec<Value>);
+
+/* #[derive(Clone)]
+/// Whether the native function call will be able to call objects (functions)
+/// passed as arguments
+pub enum FunctionType {
+    ParameterCall(fn(&mut Heap<Object>, &[Value], Callable) -> Value),
+    Simple(fn(&mut Heap<Object>, &[Value]) -> Value),
+}
+ */
+
+pub type NativeFunctionType = fn(&mut CallContext) -> Value;
 #[derive(Clone)]
 pub struct NativeFunction {
     pub name: String,
     pub arity: u8,
-    pub function: fn(&mut Heap<Object>, &[Value]) -> Value,
+    pub function: NativeFunctionType,
 }
 
 #[derive(Debug, Clone)]
@@ -220,15 +254,13 @@ pub struct Dict {
 impl Dict {
     #[inline]
     pub fn new(content: HashMap<HashValue, Value>) -> Self {
-        Dict {
-            content,
-        }
+        Dict { content }
     }
 
     #[inline]
     pub fn empty() -> Self {
         Dict {
-            content: HashMap::new()
+            content: HashMap::new(),
         }
     }
 
@@ -256,9 +288,7 @@ pub struct List {
 impl List {
     #[inline]
     pub fn new(content: Vec<Value>) -> Self {
-        List {
-            content
-        }
+        List { content }
     }
 
     #[inline]
@@ -284,8 +314,7 @@ impl List {
 
 impl Trace<Object> for List {
     fn trace(&self, tracer: &mut Tracer<Object>) {
-        self.content.iter()
-            .for_each(|v| v.trace(tracer));
+        self.content.iter().for_each(|v| v.trace(tracer));
     }
 }
 
@@ -297,10 +326,7 @@ pub struct Closure {
 
 impl Closure {
     pub fn new(function: Function, upvalues: Vec<UpValue>) -> Self {
-        Closure {
-            function,
-            upvalues
-        }
+        Closure { function, upvalues }
     }
 
     pub fn name(&self) -> &str {
@@ -328,9 +354,9 @@ impl Closure {
 impl Trace<Object> for Closure {
     fn trace(&self, tracer: &mut Tracer<Object>) {
         self.function.trace(tracer);
-        self.upvalues.iter()
+        self.upvalues
+            .iter()
             .flat_map(|u| u.get())
             .for_each(|v| v.trace(tracer));
     }
 }
-
