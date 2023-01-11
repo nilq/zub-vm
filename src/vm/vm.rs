@@ -432,6 +432,8 @@ impl VM {
         let lhs = self.stack.pop().unwrap();
 
         self.globals.insert(var, lhs);
+        // TODO: Temporary bugfix for function definitions (might be inefficient)
+        self.push(lhs);
     }
 
     #[flame]
