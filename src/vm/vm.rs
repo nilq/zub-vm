@@ -5,13 +5,13 @@ use fnv::FnvBuildHasher;
 
 use flame as f;
 use flamer::flame;
-
 use super::*;
 use super::compiler::CompileState;
 
+
 use std::mem;
 
-const STACK_SIZE:  usize = 4096;
+const STACK_SIZE: usize = 4096;
 const HEAP_GROWTH: usize = 2;
 
 const GC_TRIGGER_COUNT: usize = 1024;
@@ -59,11 +59,13 @@ impl CallFrame {
     }
 
     pub fn with_chunk<F, T>(&self, fun: F) -> T
-        where
-            F: FnOnce(&Chunk) -> T
+    where
+        F: FnOnce(&Chunk) -> T,
     {
         unsafe {
-            let closure = self.closure.get_unchecked()
+            let closure = self
+                .closure
+                .get_unchecked()
                 .as_closure()
                 .expect("closure reference by construction");
             fun(closure.chunk())
@@ -78,7 +80,7 @@ macro_rules! binary_op {
 
         $self.push((a == b).into());
         return
-    }
+    };
 }
 
 pub struct VM {
@@ -95,12 +97,12 @@ pub struct VM {
 impl VM {
     pub fn new() -> Self {
         VM {
-            stack:   Vec::with_capacity(STACK_SIZE),
-            heap:    Heap::default(),
+            stack: Vec::with_capacity(STACK_SIZE),
+            heap: Heap::default(),
             next_gc: GC_TRIGGER_COUNT,
             globals: HashMap::with_hasher(FnvBuildHasher::default()),
-            frames:  Vec::with_capacity(256),
-            open_upvalues: Vec::with_capacity(16)
+            frames: Vec::with_capacity(256),
+            open_upvalues: Vec::with_capacity(16),
         }
     }
 
@@ -160,21 +162,20 @@ impl VM {
         self.globals.insert(name.into(), function.into());
     }
 
-    fn run(&mut self)  {
+    fn run_and_find_value(&mut self, len: usize) -> Value {
+        while len <= self.frames.len() {
+            let inst = self.read_byte();
+            decode_op!(inst, self)
+        }
+        
+        self.pop()
+    }
+
+    fn run(&mut self) {
         while !self.frames.is_empty() {
             let inst = self.read_byte();
             decode_op!(inst, self)
         }
-    }
-
-    fn debug_stack(&mut self) {
-        println!("==== Stack ====");
-        let iter = self.stack.iter();
-        for a in iter {
-            let val = a.with_heap(&self.heap);
-            println!("{val}");
-        }
-        println!("===============");
     }
 
     #[flame]
@@ -201,15 +202,26 @@ impl VM {
 
     #[flame]
     fn call_closure(&mut self, handle: Handle<Object>, arity: u8) {
-        let closure = self.deref(handle)
+        let closure = self
+            .deref(handle)
             .as_closure()
             .expect("redundant cast to succeed");
 
         let last = self.stack.len();
-        let frame_start = if last < arity as usize { 0 } else { last - (arity + 1) as usize };
+        let frame_start = if last < arity as usize {
+            0
+        } else {
+            last - (arity + 1) as usize
+        };
 
         if closure.arity() != arity {
-            self.runtime_error(&format!("arity mismatch: {} != {} @ {}: {:#?}", closure.arity(), arity, closure.name(), self.stack))
+            self.runtime_error(&format!(
+                "arity mismatch: {} != {} @ {}: {:#?}",
+                closure.arity(),
+                arity,
+                closure.name(),
+                self.stack
+            ))
         }
 
         let frame = CallFrame::new(handle, frame_start);
@@ -219,7 +231,8 @@ impl VM {
     #[flame]
     fn closure(&mut self) {
         let value = self.frame_mut().read_constant();
-        let function = value.as_object()
+        let function = value
+            .as_object()
             .map(|o| self.deref(o))
             .and_then(|o| o.as_function())
             .cloned()
@@ -227,7 +240,7 @@ impl VM {
 
         let mut upvalues = Vec::new();
 
-        for _ in 0 .. function.upvalue_count() {
+        for _ in 0..function.upvalue_count() {
             let is_local = self.read_byte() > 0;
             let idx = self.read_byte() as usize;
             let upvalue = if is_local {
@@ -274,12 +287,10 @@ impl VM {
                 let value = (native.function)(&mut ctx);
 
                 self.stack.drain(frame_start + 1..);
-
-                    self.stack.pop();
-                    self.stack.push(value);
-                },
-
-                _ => self.runtime_error("bad call")
+                self.stack.pop();
+                self.stack.push(value);
+            } else {
+                self.runtime_error("bad call")
             }
         }
     }
@@ -292,7 +303,7 @@ impl VM {
             if frame.stack_start < self.stack.len() {
                 self.close_upvalues(frame.stack_start)
             }
-            
+
             self.stack.truncate(frame.stack_start);
             self.push(return_value);
         } else {
@@ -304,10 +315,10 @@ impl VM {
     fn capture_upvalue(&mut self, idx: usize) -> UpValue {
         let offset = self.frame().stack_start + idx;
 
-        self.open_upvalues.iter().rev()
-            .find(|&up| {
-                up.as_local().map(|i| i == offset).unwrap_or(false)
-            })
+        self.open_upvalues
+            .iter()
+            .rev()
+            .find(|&up| up.as_local().map(|i| i == offset).unwrap_or(false))
             .cloned()
             .unwrap_or_else(|| {
                 let up = UpValue::new(offset);
@@ -338,11 +349,12 @@ impl VM {
     #[flame]
     fn get_upvalue(&mut self) {
         let idx = self.frame_mut().read_byte();
-        let value = self.current_closure()
+        let value = self
+            .current_closure()
             .get(idx as usize)
             .get()
             .unwrap_or_else(|i| self.stack[i]);
-        
+
         self.push(value)
     }
 
@@ -363,7 +375,7 @@ impl VM {
         for mut up in open_upvalues {
             if up.get().map_err(|i| i >= stack_end).is_err() {
                 up.close(|i| self.stack[i]);
-                
+
                 self.open_upvalues.push(up)
             }
         }
@@ -376,7 +388,9 @@ impl VM {
         if self.heap.len() * mem::size_of::<Object>() >= self.next_gc {
             self.next_gc *= HEAP_GROWTH;
 
-            let upvalue_iter = self.open_upvalues.iter()
+            let upvalue_iter = self
+                .open_upvalues
+                .iter()
                 .flat_map(|u| u.get().ok())
                 .flat_map(|v| v.as_object());
 
@@ -387,7 +401,7 @@ impl VM {
                 .chain(Some(handle))
                 .chain(globals_iter)
                 .chain(upvalue_iter);
-            
+
             self.heap.clean_excluding(exclude);
         }
 
@@ -420,22 +434,22 @@ impl VM {
 
                 let new = self.allocate(Object::String(format!("{}{}", a, b)));
 
-                return self.push(new.into())
-            },
+                return self.push(new.into());
+            }
             (Obj(a), Float(b)) => {
                 let a = self.deref(a).as_string().unwrap();
 
                 let new = self.allocate(Object::String(format!("{}{}", a, b)));
 
-                return self.push(new.into())
-            },
+                return self.push(new.into());
+            }
             (Float(a), Obj(b)) => {
                 let b = self.deref(b).as_string().unwrap();
 
                 let new = self.allocate(Object::String(format!("{}{}", a, b)));
 
-                return self.push(new.into())
-            },
+                return self.push(new.into());
+            }
             _ => {}
         }
     }
@@ -474,16 +488,14 @@ impl VM {
 
     #[flame]
     fn set_global(&mut self) {
-        let handle = self.frame_mut().read_constant()
+        let handle = self
+            .frame_mut()
+            .read_constant()
             .as_object()
             .filter(|&o| self.deref(o).as_string().is_some())
             .expect("expected constant to be a string value");
-    
-        let var = unsafe {
-            handle.get_mut_unchecked()
-                .as_string()
-                .unwrap()
-        };
+
+        let var = unsafe { handle.get_mut_unchecked().as_string().unwrap() };
 
         let value = *self.stack.last().unwrap();
 
@@ -502,10 +514,10 @@ impl VM {
 
         let mut content = HashMap::new();
 
-        for _ in 0 .. element_count {
+        for _ in 0..element_count {
             let value = self.pop();
-            let key   = HashValue {
-                variant: self.pop().decode().to_hash(&self.heap)
+            let key = HashValue {
+                variant: self.pop().decode().to_hash(&self.heap),
             };
 
             content.insert(key, value);
@@ -518,16 +530,14 @@ impl VM {
     #[flame]
     fn set_dict_element(&mut self) {
         // corn
-        let dict  = self.pop();
+        let dict = self.pop();
         let key = HashValue {
-            variant: self.pop().decode().to_hash(&self.heap)
+            variant: self.pop().decode().to_hash(&self.heap),
         };
 
         let value = self.pop();
 
-        let dict_object = dict
-            .as_object()
-            .map(|o| self.heap.get_mut_unchecked(o));
+        let dict_object = dict.as_object().map(|o| self.heap.get_mut_unchecked(o));
 
         if let Some(Object::Dict(ref mut dict)) = dict_object {
             dict.insert(key, value)
@@ -537,14 +547,12 @@ impl VM {
     #[flame]
     fn get_dict_element(&mut self) {
         // corn
-        let dict  = self.pop();
+        let dict = self.pop();
         let key = HashValue {
-            variant: self.pop().decode().to_hash(&self.heap)
+            variant: self.pop().decode().to_hash(&self.heap),
         };
 
-        let dict_handle = dict
-            .as_object()
-            .unwrap();
+        let dict_handle = dict.as_object().unwrap();
 
         let dict = self.deref(dict_handle);
 
@@ -561,7 +569,7 @@ impl VM {
 
         let mut content = Vec::new();
 
-        for _ in 0 .. element_count {
+        for _ in 0..element_count {
             content.push(self.pop())
         }
 
@@ -572,7 +580,7 @@ impl VM {
     #[flame]
     fn set_list_element(&mut self) {
         let list = self.pop();
-        let idx  = if let Variant::Float(ref index) = self.pop().decode() {
+        let idx = if let Variant::Float(ref index) = self.pop().decode() {
             *index as usize
         } else {
             panic!("Can't index list with non-number")
@@ -580,9 +588,7 @@ impl VM {
 
         let value = self.pop();
 
-        let list_object = list
-            .as_object()
-            .map(|o| self.heap.get_mut_unchecked(o));
+        let list_object = list.as_object().map(|o| self.heap.get_mut_unchecked(o));
 
         if let Some(Object::List(ref mut list)) = list_object {
             list.set(idx as usize, value)
@@ -600,7 +606,7 @@ impl VM {
             c @ Variant::True | c @ Variant::False => HashVariant::Bool(c == Variant::True),
             Variant::Obj(ref handle) => {
                 HashVariant::Str(self.deref(*handle).as_string().unwrap().to_owned())
-            },
+            }
             Nil => HashVariant::Nil,
         };
 
@@ -612,16 +618,14 @@ impl VM {
             } else {
                 panic!("Can't index list with non-number")
             };
-    
+
             list.set(idx as usize, value);
 
-            return
+            return;
         }
 
         if let Object::Dict(dict) = list_object {
-            let key = HashValue {
-                variant
-            };
+            let key = HashValue { variant };
 
             dict.insert(key, value);
         }
@@ -632,9 +636,7 @@ impl VM {
         let list = self.pop();
         let index = self.pop();
 
-        let list_handle = list
-            .as_object()
-            .unwrap();
+        let list_handle = list.as_object().unwrap();
 
         let list = self.deref(list_handle);
 
@@ -644,17 +646,17 @@ impl VM {
             } else {
                 panic!("Can't index list with non-number")
             };
-    
+
             let element = list.get(idx as usize);
-    
+
             self.push(element);
 
-            return
+            return;
         }
 
         if let Some(dict) = list.as_dict() {
             let key = HashValue {
-                variant: index.decode().to_hash(&self.heap)
+                variant: index.decode().to_hash(&self.heap),
             };
 
             if let Some(value) = dict.get(&key) {
@@ -760,13 +762,11 @@ impl VM {
     fn not(&mut self) {
         let a = self.pop();
 
-        self.push(
-            if a.truthy() {
-                Value::falselit()
-            } else {
-                Value::truelit()
-            }
-        )
+        self.push(if a.truthy() {
+            Value::falselit()
+        } else {
+            Value::truelit()
+        })
     }
 
     #[flame]
@@ -820,7 +820,7 @@ impl VM {
 
     fn push(&mut self, value: Value) {
         if self.stack.len() == STACK_SIZE {
-            panic!("STACK OVERFLOW >:( @ {:#?}", &self.stack[STACK_SIZE - 50 ..]);
+            panic!("STACK OVERFLOW >:( @ {:#?}", &self.stack[STACK_SIZE - 50..]);
         }
 
         self.stack.push(value);
