@@ -112,8 +112,8 @@ impl<'c> Disassembler<'c> {
     }
 
     fn define_global(&mut self) {
-        let val = self.read_constant();
-        eprint!("DEFINE_GLOBAL\t{}", val.with_heap(self.heap));
+        let name = self.read_constant();
+        eprint!("DEFINE_GLOBAL\t{}", name.with_heap(self.heap));
     }
 
     fn get_local(&mut self) {
