@@ -1,4 +1,4 @@
-use zub::{ir::*, vm::*};
+use zubbers::{ir::*, vm::*};
 
 fn parse_expr(
     builder: &mut IrBuilder,

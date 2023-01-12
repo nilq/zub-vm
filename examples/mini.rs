@@ -1,5 +1,5 @@
 // Mini Rust language
-use zub::{ir::*, vm::*};
+use zubbers::{ir::*, vm::*};
 
 extern crate logos;
 use logos::Logos;
@@ -113,7 +113,8 @@ impl Op {
             Mul => BinaryOp::Mul,
             Div => BinaryOp::Div,
             Rem => BinaryOp::Rem,
-            Index => BinaryOp::Index,
+            // TODO: Index BinOp deprecated
+            _ => panic!("Index deprecated"),
         }
     }
 }
