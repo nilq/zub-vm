@@ -1,6 +1,9 @@
 # Zub VM
 > A super-fast, stack-based virtual machine for dynamic languages
 
+# Warning
+This library has recently been forked and is being reworked on to add new features, don't expect a lot of stuff to be stable.
+
 ## Features
 
 - NaN-tagging value representation

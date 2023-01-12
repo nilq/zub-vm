@@ -1,10 +1,10 @@
 [package]
-name = "zub"
-version = "0.3.14"
-authors = ["nilq <i.am.niels.nielsen@gmail.com>"]
+name = "zubbers"
+version = "0.0.1"
+authors = ["nilq <i.am.niels.nielsen@gmail.com>", "sawcce <sawcce@proton.me>"]
 edition = "2018"
-homepage = "https://github.com/nilq/zub-vm"
-repository = "https://github.com/nilq/zub-vm"
+homepage = "https://github.com/sawcce/zubbers"
+repository = "https://github.com/sawcce/zubbers"
 readme = "README.md"
 license = "MIT"
 description = "A fast, stack-based virtual machine for dynamic languages, with an intuitive IR-builder, garbage collection and NaN-tagging."
