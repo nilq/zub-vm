@@ -290,6 +290,13 @@ impl<'g> Compiler<'g> {
                 self.emit(Op::SetElement);
             },
 
+            GetElement(ref list, ref index) => {
+                self.compile_expr(index);
+                self.compile_expr(list);
+
+                self.emit(Op::GetElement);
+            },
+
             Dict(keys, values) => {
                 for (key, val) in keys.iter().zip(values.iter()) {
                     self.compile_expr(key);
@@ -377,13 +384,6 @@ impl<'g> Compiler<'g> {
 
                         self.patch_jmp(end_jmp)
                     },
-
-                    Index => {
-                        self.compile_expr(rhs);
-                        self.compile_expr(lhs);
-        
-                        self.emit(Op::Index);
-                    }
 
                     _ => {
                         // This looks kinda funny, but it's an ok way of matching I guess

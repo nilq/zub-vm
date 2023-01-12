@@ -89,7 +89,6 @@ pub enum BinaryOp {
     NEqual,
     GtEqual,
     LtEqual,
-    Index,
     Gt,
     Lt,
     And,
@@ -188,6 +187,7 @@ pub enum Expr {
     List(Vec<ExprNode>),
     Dict(Vec<ExprNode>, Vec<ExprNode>), // They need to be the same size, funny enough
     SetElement(ExprNode, ExprNode, ExprNode),
+    GetElement(ExprNode, ExprNode),
 
     Block(Vec<ExprNode>),
 

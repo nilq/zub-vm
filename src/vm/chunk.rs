@@ -230,9 +230,8 @@ pub enum Op {
 
     List,
     Dict,
+    GetElement,
     SetElement,
-
-    Index,
 }
 
 impl Op {
@@ -275,7 +274,7 @@ impl Op {
             Rem => buf.push(0x27),
             Dict => buf.push(0x28),
             SetElement => buf.push(0x29),
-            Index => buf.push(0x30),
+            GetElement => buf.push(0x30),
             Pow => buf.push(0x31),
         }
     }
@@ -320,7 +319,7 @@ macro_rules! decode_op {
             0x27 => $this.rem(),
             0x28 => $this.dict(),
             0x29 => $this.set_element(),
-            0x30 => $this.index(),
+            0x30 => $this.get_element(),
             0x31 => $this.pow(),
             _ => {
                 panic!("Unknown op {}", $op);

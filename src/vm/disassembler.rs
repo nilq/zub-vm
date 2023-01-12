@@ -72,7 +72,9 @@ impl<'c> Disassembler<'c> {
         self.read_byte();
     }
 
-    fn index(&mut self) {}
+    fn get_element(&mut self) {
+        eprint!("GET_ELEMENT");
+    }
 
     fn dict(&mut self) {
         eprint!("DICT");

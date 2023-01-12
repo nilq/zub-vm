@@ -632,7 +632,7 @@ impl VM {
     }
 
     #[flame]
-    fn index(&mut self) {
+    fn get_element(&mut self) {
         let list = self.pop();
         let index = self.pop();
 
