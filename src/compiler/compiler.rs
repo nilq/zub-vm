@@ -61,7 +61,7 @@ impl CompileState {
     }
 
     fn add_local(&mut self, var: &str, depth: usize) -> u8 {
-        let depth = self.scope_depth - (depth-1);
+        let depth = self.scope_depth - (depth);
 
         if self.locals.len() == std::u8::MAX as usize {
             panic!("local variable overflow")
