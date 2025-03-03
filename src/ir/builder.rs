@@ -1,7 +1,7 @@
 use super::*;
 
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 pub struct IrBuilder {
@@ -14,7 +14,6 @@ impl IrBuilder {
             program: Vec::new(),
         }
     }
-
 
     pub fn bind(&mut self, binding: Binding, rhs: ExprNode) {
         let bind = Expr::Bind(binding, rhs);
@@ -35,18 +34,12 @@ impl IrBuilder {
             TypeInfo::nil()
         };
 
-        self.emit(
-            Expr::Return(value).node(info)
-        )
+        self.emit(Expr::Return(value).node(info))
     }
 
     pub fn break_(&mut self) {
-        self.emit(
-            Expr::Break.node(TypeInfo::nil())
-        )
+        self.emit(Expr::Break.node(TypeInfo::nil()))
     }
-
-
 
     pub fn list(&self, content: Vec<ExprNode>) -> ExprNode {
         Expr::List(content).node(TypeInfo::nil())
@@ -55,7 +48,6 @@ impl IrBuilder {
     pub fn set_element(&self, list: ExprNode, index: ExprNode, value: ExprNode) -> ExprNode {
         Expr::SetElement(list, index, value).node(TypeInfo::nil())
     }
-
 
     pub fn dict(&self, keys: Vec<ExprNode>, values: Vec<ExprNode>) -> ExprNode {
         Expr::Dict(keys, values).node(TypeInfo::nil())
@@ -66,29 +58,18 @@ impl IrBuilder {
     }
 
     pub fn var(&self, binding: Binding) -> ExprNode {
-        Expr::Var(
-            binding
-        ).node(
-            TypeInfo::nil()
-        )
+        Expr::Var(binding).node(TypeInfo::nil())
     }
 
     pub fn call(&self, callee: ExprNode, args: Vec<ExprNode>, retty: Option<TypeInfo>) -> ExprNode {
-        let call = Call {
-            callee,
-            args
-        };
+        let call = Call { callee, args };
 
-        Expr::Call(call).node(
-            if let Some(info) = retty {
-                info
-            } else {
-                TypeInfo::nil()
-            }
-        )
+        Expr::Call(call).node(if let Some(info) = retty {
+            info
+        } else {
+            TypeInfo::nil()
+        })
     }
-
-
 
     pub fn binary(&self, lhs: ExprNode, op: BinaryOp, rhs: ExprNode) -> ExprNode {
         Expr::Binary(lhs, op, rhs).node(TypeInfo::nil())
@@ -126,9 +107,19 @@ impl IrBuilder {
         Expr::Literal(lit).node(info)
     }
 
+    pub fn nil(&self) -> ExprNode {
+        let info = TypeInfo::new(Type::Nil);
+        let lit = Literal::Nil;
 
+        Expr::Literal(lit).node(info)
+    }
 
-    pub fn function(&mut self, var: Binding, params: &[&str], mut body_build: impl FnMut(&mut IrBuilder)) -> ExprNode {
+    pub fn function(
+        &mut self,
+        var: Binding,
+        params: &[&str],
+        mut body_build: impl FnMut(&mut IrBuilder),
+    ) -> ExprNode {
         let mut body_builder = IrBuilder::new();
 
         body_build(&mut body_builder);
@@ -136,33 +127,40 @@ impl IrBuilder {
         let body = body_builder.build();
 
         let func_body = IrFunctionBody {
-            params: params.iter().cloned().map(|x: &str|
-                Binding::local(x, var.depth.unwrap_or(0) + 1, var.function_depth + 1)).collect::<Vec<Binding>>(),
+            params: params
+                .iter()
+                .cloned()
+                .map(|x: &str| {
+                    Binding::local(x, var.depth.unwrap_or(0) + 1, var.function_depth + 1)
+                })
+                .collect::<Vec<Binding>>(),
             method: false,
-            inner: body
+            inner: body,
         };
 
         let ir_func = IrFunction {
             var,
-            body: Rc::new(RefCell::new(func_body))
+            body: Rc::new(RefCell::new(func_body)),
         };
 
-        Expr::Function(
-            ir_func
-        ).node(
-            TypeInfo::nil()
-        )
+        Expr::Function(ir_func).node(TypeInfo::nil())
     }
 
-    pub fn ternary(&mut self, cond: ExprNode, then_body: ExprNode, else_body: Option<ExprNode>) -> ExprNode {
-        Expr::If(
-            cond,
-            then_body,
-            else_body
-        ).node(TypeInfo::nil())
+    pub fn ternary(
+        &mut self,
+        cond: ExprNode,
+        then_body: ExprNode,
+        else_body: Option<ExprNode>,
+    ) -> ExprNode {
+        Expr::If(cond, then_body, else_body).node(TypeInfo::nil())
     }
 
-    pub fn if_(&mut self, cond: ExprNode, then_build: fn(&mut IrBuilder), else_build: Option<fn(&mut IrBuilder)>) -> ExprNode {
+    pub fn if_(
+        &mut self,
+        cond: ExprNode,
+        then_build: fn(&mut IrBuilder),
+        else_build: Option<fn(&mut IrBuilder)>,
+    ) -> ExprNode {
         let mut then_builder = IrBuilder::new();
 
         then_build(&mut then_builder);
@@ -179,11 +177,7 @@ impl IrBuilder {
             None
         };
 
-        Expr::If(
-            cond,
-            then_body,
-            else_body
-        ).node(TypeInfo::nil())
+        Expr::If(cond, then_body, else_body).node(TypeInfo::nil())
     }
 
     pub fn while_(&mut self, cond: ExprNode, then_build: fn(&mut IrBuilder)) -> ExprNode {
@@ -193,13 +187,8 @@ impl IrBuilder {
 
         let then_body = Expr::Block(then_builder.build()).node(TypeInfo::nil());
 
-        Expr::While(
-            cond,
-            then_body,
-        ).node(TypeInfo::nil())
+        Expr::While(cond, then_body).node(TypeInfo::nil())
     }
-
-
 
     pub fn build(&self) -> Vec<ExprNode> {
         self.program.clone()
